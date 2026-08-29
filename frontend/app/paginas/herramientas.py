@@ -206,7 +206,9 @@ def _panel_venn(sesion: Sesion) -> None:
                         ui.label(str(valor)).classes("font-bold")
                         ui.label(clave.replace("_", " ")).classes("text-xs text-gray-500")
 
-    ui.label(
+    # `ui.markdown`, no `ui.label`: label no interpreta el formato y los
+    # asteriscos salían literales en pantalla.
+    ui.markdown(
         "Introduce las cardinalidades **totales** del enunciado; el reparto por "
         "regiones lo calcula el motor con inclusión-exclusión."
     ).classes("text-sm text-gray-500")
