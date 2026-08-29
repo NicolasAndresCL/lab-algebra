@@ -8,6 +8,7 @@ from nicegui import ui
 
 from app.api import ErrorApi, Sesion, imagen_venn
 from app.estado import cerrar_sesion, sesion_actual
+from app.temas import TEMAS, GestorTema, Tema
 
 # Símbolos que el teclado no trae. Se ofrecen como botones para que escribir
 # una fórmula no obligue a buscar caracteres en el mapa de caracteres.
@@ -20,14 +21,66 @@ COLOR_CLASIFICACION = {
 }
 
 
-def cabecera(titulo: str, activo: str = "") -> None:
-    """Barra superior con la navegación principal."""
+# --------------------------------------------------------------------------
+# Tema
+# --------------------------------------------------------------------------
+def selector_de_tema(gestor: GestorTema) -> None:
+    """Botón de paleta con el menú de temas.
+
+    Va **a la izquierda del botón de cerrar sesión**: es una preferencia que se
+    toca a menudo, y pegarla al botón de salir sin separarla invitaría a
+    pulsarlo por error.
+    """
+    with (
+        ui.button(icon="palette").props("flat round").tooltip("Cambiar de tema"),
+        ui.menu().props("auto-close").classes("lab-superficie"),
+    ):
+        ui.label("Tema de la interfaz").classes("px-3 pt-2 pb-1 text-xs lab-tenue")
+        for tema in TEMAS.values():
+            _fila_de_tema(gestor, tema)
+
+
+def _fila_de_tema(gestor: GestorTema, tema: Tema) -> None:
+    def elegir() -> None:
+        gestor.cambiar(tema)
+        ui.notify(f"Tema «{tema.nombre}»", type="positive", position="bottom-right")
+
+    with ui.item(on_click=elegir).classes("min-w-[17rem]"):
+        with ui.item_section().props("avatar"):
+            # Una muestra con los tres colores reales del tema dice más que el
+            # nombre: «Ónix» y «Carbón» no se distinguen por el texto.
+            fondo, superficie, marca = tema.muestra
+            ui.html(
+                f'<span class="lab-muestra" style="background: linear-gradient('
+                f"90deg, {fondo} 0 40%, {superficie} 40% 70%, {marca} 70% 100%)\"></span>"
+            )
+        with ui.item_section():
+            with ui.row().classes("items-center gap-2 no-wrap"):
+                ui.label(tema.nombre).classes("font-medium")
+                if tema.clave == gestor.tema.clave:
+                    ui.icon("check", size="18px").classes("text-positive")
+            ui.label(tema.descripcion).classes("text-xs lab-tenue")
+
+
+# --------------------------------------------------------------------------
+# Estructura de página
+# --------------------------------------------------------------------------
+def cabecera(titulo: str, activo: str = "") -> GestorTema:
+    """Barra superior con la navegación, el selector de tema y la salida.
+
+    Devuelve el gestor de tema porque lo crea ella: el tema tiene que aplicarse
+    **antes** de que se pinte el contenido, y la cabecera es lo primero que
+    construye toda página.
+    """
+    gestor = GestorTema()
     sesion = sesion_actual()
-    with ui.header().classes("items-center justify-between px-4 py-2 bg-primary"):
+
+    with ui.header().classes("items-center justify-between px-4 py-2 lab-cabecera"):
         with ui.row().classes("items-center gap-3"):
-            ui.icon("school", size="28px").classes("text-white")
-            ui.label("lab-algebra").classes("text-white text-lg font-bold")
-            ui.label(titulo).classes("text-white/80 text-sm hidden sm:block")
+            ui.icon("school", size="28px").classes("text-primary")
+            ui.label("lab-algebra").classes("text-lg font-bold lab-rotulo")
+            ui.label(titulo).classes("text-sm opacity-70 hidden sm:block lab-rotulo")
+
         with ui.row().classes("items-center gap-1"):
             for etiqueta, ruta, icono in (
                 ("Mazos", "/", "style"),
@@ -37,14 +90,21 @@ def cabecera(titulo: str, activo: str = "") -> None:
             ):
                 boton = ui.button(
                     etiqueta, icon=icono, on_click=lambda r=ruta: ui.navigate.to(r)
-                ).props("flat color=white no-caps")
+                ).props("flat no-caps")
                 if ruta == activo:
                     boton.props("outline")
+
             if sesion is not None:
-                ui.label(sesion.nombre).classes("text-white/80 text-sm ml-2 hidden md:block")
-                ui.button(icon="logout", on_click=_salir).props("flat color=white").tooltip(
+                ui.label(sesion.nombre).classes(
+                    "text-sm opacity-70 ml-2 hidden md:block lab-rotulo"
+                )
+            ui.separator().props("vertical inset").classes("mx-1 opacity-30")
+            selector_de_tema(gestor)
+            if sesion is not None:
+                ui.button(icon="logout", on_click=_salir).props("flat round").tooltip(
                     "Cerrar sesión"
                 )
+    return gestor
 
 
 def _salir() -> None:
@@ -54,20 +114,21 @@ def _salir() -> None:
 
 def titulo_pagina(texto: str, subtitulo: str = "") -> None:
     with ui.column().classes("w-full gap-0 mb-3"):
-        ui.label(texto).classes("text-2xl font-bold")
+        ui.label(texto).classes("text-2xl font-bold lab-texto")
         if subtitulo:
-            ui.label(subtitulo).classes("text-sm text-gray-500 dark:text-gray-400")
+            ui.label(subtitulo).classes("text-sm lab-tenue")
 
 
+# --------------------------------------------------------------------------
+# Contenido
+# --------------------------------------------------------------------------
 def tabla_de_verdad(datos: dict) -> None:
     """Dibuja una tabla de verdad ya calculada por el backend."""
     columnas = [
         {"name": f"c{i}", "label": nombre, "field": f"c{i}", "align": "center"}
         for i, nombre in enumerate(datos["columnas"])
     ]
-    filas = [
-        {f"c{i}": valor for i, valor in enumerate(fila)} for fila in datos["filas"]
-    ]
+    filas = [{f"c{i}": valor for i, valor in enumerate(fila)} for fila in datos["filas"]]
     with ui.column().classes("w-full gap-2"):
         with ui.row().classes("items-center gap-2"):
             ui.badge(datos["clasificacion"].upper()).props(
@@ -76,20 +137,26 @@ def tabla_de_verdad(datos: dict) -> None:
             ui.label(
                 f"{datos['numero_filas']} filas "
                 f"({len(datos['variables'])} variables: {', '.join(datos['variables'])})"
-            ).classes("text-sm text-gray-500")
+            ).classes("text-sm lab-tenue")
         ui.table(columns=columnas, rows=filas, row_key="c0").props(
             "dense flat bordered"
-        ).classes("w-full text-center")
+        ).classes("w-full text-center lab-tabla")
 
 
-def diagrama_venn(sesion: Sesion, especificacion: dict) -> None:
-    """Descarga y muestra el diagrama; si falla, lo dice en vez de dejar un hueco."""
+def diagrama_venn(sesion: Sesion, especificacion: dict, tema: Tema) -> None:
+    """Descarga y muestra el diagrama; si falla, lo dice en vez de dejar un hueco.
+
+    El tema viaja al backend para que la imagen se genere con el fondo de la
+    paleta activa: un PNG blanco en mitad de una pantalla negra se ve como un
+    foco encendido.
+    """
+    peticion = {**especificacion, "fondo": tema.lab_venn_fondo, "tinta": tema.lab_venn_texto}
     try:
-        fuente = imagen_venn(sesion, especificacion)
+        fuente = imagen_venn(sesion, peticion)
     except ErrorApi as error:
         ui.label(f"No se pudo generar el diagrama: {error}").classes("text-negative text-sm")
         return
-    ui.image(fuente).classes("w-full max-w-xl rounded border border-gray-300")
+    ui.image(fuente).classes("w-full max-w-xl rounded lab-superficie")
 
 
 def parrafo_multilinea(texto: str, clases: str = "") -> None:

@@ -8,6 +8,7 @@ from app.api import ErrorApi, Sesion, calificar, cola_de_estudio
 from app.componentes import cabecera, titulo_pagina
 from app.estado import avisar, exigir_sesion
 from app.paginas.tarjeta import anverso, reverso
+from app.temas import GestorTema
 
 # Escala de SM-2 reducida a cuatro botones. Menos opciones que la escala
 # completa 0-5 porque a la hora de repasar nadie distingue de verdad seis
@@ -26,14 +27,14 @@ def pagina_estudiar(mazo: int | None = None) -> None:
     if sesion is None:
         return
 
-    cabecera("Sesión de estudio", activo="/estudiar")
+    gestor = cabecera("Sesión de estudio", activo="/estudiar")
     with ui.column().classes("w-full max-w-3xl mx-auto p-4 gap-4"):
         titulo_pagina(
             "Sesión de estudio",
             "Lee el concepto, intenta responder de memoria y recién entonces gira "
             "la tarjeta.",
         )
-        _Sesion(sesion, mazo).montar()
+        _Sesion(sesion, mazo, gestor).montar()
 
 
 class _Sesion:
@@ -43,9 +44,12 @@ class _Sesion:
     de módulo, dos personas estudiando a la vez compartirían la misma cola.
     """
 
-    def __init__(self, sesion: Sesion, mazo_id: int | None) -> None:
+    def __init__(
+        self, sesion: Sesion, mazo_id: int | None, gestor: GestorTema
+    ) -> None:
         self.sesion = sesion
         self.mazo_id = mazo_id
+        self.gestor = gestor
         self.cola: list[dict] = []
         self.indice = 0
         self.girada = False
@@ -107,23 +111,23 @@ class _Sesion:
             with ui.row().classes("w-full items-center justify-between"):
                 ui.label(
                     f"Tarjeta {self.indice + 1} de {len(self.cola)}"
-                ).classes("text-sm text-gray-500")
+                ).classes("text-sm lab-tenue")
                 ui.linear_progress(
                     self.indice / len(self.cola), show_value=False
                 ).classes("w-40")
 
-            with ui.card().classes("w-full p-6 gap-4 min-h-[18rem]"):
+            with ui.card().classes("w-full p-6 gap-4 min-h-[18rem] lab-superficie"):
                 anverso(tarjeta)
                 if self.girada:
                     ui.separator()
-                    reverso(self.sesion, tarjeta)
+                    reverso(self.sesion, tarjeta, self.gestor.tema)
 
             if not self.girada:
                 ui.button(
                     "Girar tarjeta", icon="flip", on_click=self._girar
                 ).props("no-caps size=lg").classes("w-full")
             else:
-                ui.label("¿Qué tal la recordaste?").classes("text-sm text-gray-500")
+                ui.label("¿Qué tal la recordaste?").classes("text-sm lab-tenue")
                 with ui.row().classes("w-full gap-2 flex-wrap justify-center"):
                     for calidad, etiqueta, icono, color in CALIFICACIONES:
                         ui.button(
@@ -133,7 +137,7 @@ class _Sesion:
                         ).props(f"no-caps color={color}").classes("flex-1 min-w-[9rem]")
 
     def _pintar_final(self) -> None:
-        with ui.card().classes("w-full p-8 items-center gap-3"):
+        with ui.card().classes("w-full p-8 items-center gap-3 lab-superficie"):
             ui.icon("celebration", size="48px").classes("text-positive")
             if self.calificadas:
                 ui.label(
@@ -142,7 +146,7 @@ class _Sesion:
                 ).classes("text-xl font-semibold")
                 ui.label(
                     "Las que fallaste vuelven hoy mismo; las acertadas, más adelante."
-                ).classes("text-sm text-gray-500 text-center")
+                ).classes("text-sm lab-tenue text-center")
             else:
                 ui.label("No hay tarjetas pendientes por ahora.").classes(
                     "text-xl font-semibold"
@@ -150,7 +154,7 @@ class _Sesion:
                 ui.label(
                     "Vuelve cuando toque el próximo repaso, o revisa los mazos "
                     "para consultarlas."
-                ).classes("text-sm text-gray-500 text-center")
+                ).classes("text-sm lab-tenue text-center")
             with ui.row().classes("gap-2 mt-2"):
                 ui.button("Buscar más", icon="refresh", on_click=self._reiniciar).props(
                     "no-caps"

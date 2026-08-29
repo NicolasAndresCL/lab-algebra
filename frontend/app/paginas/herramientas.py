@@ -16,6 +16,7 @@ from app.api import (
 from app.componentes import cabecera, campo_formula, titulo_pagina
 from app.componentes import tabla_de_verdad as pintar_tabla
 from app.estado import exigir_sesion
+from app.temas import Tema
 
 
 @ui.page("/herramientas")
@@ -24,7 +25,7 @@ def pagina_herramientas() -> None:
     if sesion is None:
         return
 
-    cabecera("Herramientas", activo="/herramientas")
+    gestor = cabecera("Herramientas", activo="/herramientas")
     with ui.column().classes("w-full max-w-4xl mx-auto p-4 gap-4"):
         titulo_pagina(
             "Herramientas de cálculo",
@@ -43,7 +44,7 @@ def pagina_herramientas() -> None:
             with ui.tab_panel("conjuntos"):
                 _panel_conjuntos(sesion)
             with ui.tab_panel("venn"):
-                _panel_venn(sesion)
+                _panel_venn(sesion, gestor.tema)
 
 
 # --------------------------------------------------------------------------
@@ -66,7 +67,7 @@ def _panel_tabla(sesion: Sesion) -> None:
     ui.label(
         "Acepta los símbolos de la asignatura y también los atajos de teclado: "
         "~ o !, & o ^, | , -> , <->."
-    ).classes("text-sm text-gray-500")
+    ).classes("text-sm lab-tenue")
     entrada = campo_formula("Fórmula proposicional", "(p ∨ r) → (p ∧ ¬s)", calcular)
     ui.button("Calcular tabla", icon="play_arrow", on_click=calcular).props("no-caps")
     resultado = ui.column().classes("w-full gap-2")
@@ -92,18 +93,18 @@ def _panel_equivalencia(sesion: Sesion) -> None:
                 ui.label(
                     "Su bicondicional es una tautología, así que se pueden sustituir "
                     "la una por la otra."
-                ).classes("text-sm text-gray-500")
+                ).classes("text-sm lab-tenue")
             else:
                 ui.label("No son equivalentes.").classes("text-negative font-semibold")
                 ui.label(
                     "Busca en la tabla la fila con F en la última columna: ahí es donde "
                     "difieren."
-                ).classes("text-sm text-gray-500")
+                ).classes("text-sm lab-tenue")
             pintar_tabla(datos["tabla"])
 
     ui.label(
         "Dos fórmulas son equivalentes si su bicondicional es una tautología."
-    ).classes("text-sm text-gray-500")
+    ).classes("text-sm lab-tenue")
     a = campo_formula("Primera fórmula", "¬(p ∧ q)", comprobar)
     b = campo_formula("Segunda fórmula", "¬p ∨ ¬q", comprobar)
     ui.button("Comprobar", icon="play_arrow", on_click=comprobar).props("no-caps")
@@ -148,11 +149,11 @@ def _panel_conjuntos(sesion: Sesion) -> None:
             ui.label(
                 f"|A| = {card['a']} · |B| = {card['b']} · |A ∪ B| = {card['union']} · "
                 f"|A ∩ B| = {card['interseccion']} · |℘(A)| = {card['partes_de_a']}"
-            ).classes("text-sm text-gray-500")
+            ).classes("text-sm lab-tenue")
 
     ui.label(
         "Si no declaras universo, se toma A ∪ B como universo para los complementos."
-    ).classes("text-sm text-gray-500")
+    ).classes("text-sm lab-tenue")
     a = ui.input("Conjunto A", value="1, 2, 3, 4").classes("w-full").props("outlined dense")
     b = ui.input("Conjunto B", value="3, 4, 5, 6").classes("w-full").props("outlined dense")
     u = ui.input("Universo (opcional)", value="").classes("w-full").props("outlined dense")
@@ -163,7 +164,7 @@ def _panel_conjuntos(sesion: Sesion) -> None:
     calcular()
 
 
-def _panel_venn(sesion: Sesion) -> None:
+def _panel_venn(sesion: Sesion, tema: Tema) -> None:
     resultado: ui.column
 
     def numero(campo: ui.input) -> int:
@@ -193,25 +194,29 @@ def _panel_venn(sesion: Sesion) -> None:
             )
         try:
             regiones = regiones_venn(sesion, especificacion)["regiones"]
-            fuente = imagen_venn(sesion, especificacion)
+            fuente = imagen_venn(
+                sesion,
+                {**especificacion, "fondo": tema.lab_venn_fondo,
+                 "tinta": tema.lab_venn_texto},
+            )
         except ErrorApi as error:
             with resultado:
                 _mostrar_error(error, "")
             return
         with resultado:
-            ui.image(fuente).classes("w-full max-w-2xl rounded border border-gray-300")
+            ui.image(fuente).classes("w-full max-w-2xl rounded lab-superficie")
             with ui.row().classes("flex-wrap gap-3 justify-center"):
                 for clave, valor in regiones.items():
                     with ui.column().classes("items-center gap-0"):
                         ui.label(str(valor)).classes("font-bold")
-                        ui.label(clave.replace("_", " ")).classes("text-xs text-gray-500")
+                        ui.label(clave.replace("_", " ")).classes("text-xs lab-tenue")
 
     # `ui.markdown`, no `ui.label`: label no interpreta el formato y los
     # asteriscos salían literales en pantalla.
     ui.markdown(
         "Introduce las cardinalidades **totales** del enunciado; el reparto por "
         "regiones lo calcula el motor con inclusión-exclusión."
-    ).classes("text-sm text-gray-500")
+    ).classes("text-sm lab-tenue")
 
     usar_c = ui.switch("Tres conjuntos", value=False, on_change=lambda: _alternar())
     with ui.row().classes("w-full gap-2 flex-wrap"):

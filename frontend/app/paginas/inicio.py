@@ -35,7 +35,7 @@ def _panel_progreso(sesion: Sesion) -> None:
         avisar(error)
         return
 
-    with ui.card().classes("w-full p-4"):
+    with ui.card().classes("w-full p-4 lab-superficie"):
         with ui.row().classes("w-full justify-around items-center flex-wrap gap-4"):
             for etiqueta, valor, icono in (
                 ("Tarjetas", datos["total_tarjetas"], "style"),
@@ -48,7 +48,7 @@ def _panel_progreso(sesion: Sesion) -> None:
                 with ui.column().classes("items-center gap-0"):
                     ui.icon(icono, size="22px").classes("text-primary")
                     ui.label(str(valor)).classes("text-xl font-bold")
-                    ui.label(etiqueta).classes("text-xs text-gray-500")
+                    ui.label(etiqueta).classes("text-xs lab-tenue")
 
         if datos["total_tarjetas"]:
             avance = datos["estudiadas"] / datos["total_tarjetas"]
@@ -64,16 +64,16 @@ def _rejilla_de_mazos(sesion: Sesion) -> None:
 
     with ui.grid().classes("w-full gap-4 grid-cols-1 md:grid-cols-2"):
         for mazo in mazos:
-            with ui.card().classes("p-4 gap-2"):
+            with ui.card().classes("p-4 gap-2 lab-superficie"):
                 with ui.row().classes("items-center justify-between w-full"):
                     ui.label(mazo["nombre"]).classes("text-lg font-semibold")
                     ui.badge(mazo["unidad"]).props(
                         f"color={COLOR_UNIDAD.get(mazo['unidad'], 'primary')}"
                     )
-                ui.label(mazo["descripcion"]).classes("text-sm text-gray-500")
+                ui.label(mazo["descripcion"]).classes("text-sm lab-tenue")
                 with ui.row().classes("items-center justify-between w-full mt-2"):
                     ui.label(f"{mazo['total_tarjetas']} tarjetas").classes(
-                        "text-sm text-gray-500"
+                        "text-sm lab-tenue"
                     )
                     with ui.row().classes("gap-2"):
                         ui.button(
@@ -96,7 +96,7 @@ def pagina_mazo(mazo_id: int) -> None:
     if sesion is None:
         return
 
-    cabecera("Tarjetas del mazo", activo="/")
+    gestor = cabecera("Tarjetas del mazo", activo="/")
     with ui.column().classes("w-full max-w-4xl mx-auto p-4 gap-4"):
         try:
             mazos = {m["id"]: m for m in listar_mazos(sesion)}
@@ -131,13 +131,13 @@ def pagina_mazo(mazo_id: int) -> None:
             with contenedor:
                 if not tarjetas:
                     ui.label("Ninguna tarjeta coincide con la búsqueda.").classes(
-                        "text-gray-500"
+                        "lab-tenue"
                     )
                 for tarjeta in tarjetas:
                     with ui.expansion(tarjeta["concepto"]).classes(
-                        "w-full border rounded border-gray-300 dark:border-gray-700"
+                        "w-full rounded lab-superficie"
                     ).props("dense-toggle"):
-                        panel_tarjeta(sesion, tarjeta)
+                        panel_tarjeta(sesion, tarjeta, gestor.tema)
 
         buscador.on("keydown.enter", recargar)
         buscador.on("clear", recargar)

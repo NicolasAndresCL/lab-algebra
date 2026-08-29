@@ -44,7 +44,7 @@ def _formulario_tarjeta(sesion: Sesion) -> None:
         return
     if not mazos:
         ui.label("Todavía no hay mazos. Crea uno en la otra pestaña.").classes(
-            "text-gray-500"
+            "lab-tenue"
         )
         return
 
@@ -65,7 +65,7 @@ def _formulario_tarjeta(sesion: Sesion) -> None:
     ui.label(
         "Los tres campos son obligatorios: una tarjeta sin ejercicio resuelto no "
         "enseña a aplicar el concepto."
-    ).classes("text-sm text-gray-500")
+    ).classes("text-sm lab-tenue")
     enunciado = ui.textarea("Enunciado").classes("w-full").props("outlined dense autogrow")
     desarrollo = ui.textarea("Desarrollo paso a paso").classes("w-full").props(
         "outlined dense autogrow"
@@ -76,7 +76,7 @@ def _formulario_tarjeta(sesion: Sesion) -> None:
     ui.label("Extras opcionales").classes("font-semibold")
     ui.label(
         "Si indicas una fórmula, la tarjeta mostrará su tabla de verdad calculada."
-    ).classes("text-sm text-gray-500")
+    ).classes("text-sm lab-tenue")
     formula = campo_formula("Fórmula (opcional)")
     fuente = ui.input("Fuente (clase, lámina, PDF…)").classes("w-full").props("outlined dense")
 
