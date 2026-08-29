@@ -18,6 +18,7 @@ conjuntos su diagrama de Venn dibujado a partir de los datos del enunciado.
 ## Contenido
 
 - [Qué trae](#qué-trae)
+- [Cómo se ve](#cómo-se-ve)
 - [Puesta en marcha](#puesta-en-marcha)
 - [Cómo se usa](#cómo-se-usa)
 - [Arquitectura](#arquitectura)
@@ -40,6 +41,17 @@ conjuntos su diagrama de Venn dibujado a partir de los datos del enunciado.
 | **Diagramas de Venn** | matplotlib-venn, con las regiones calculadas por inclusión-exclusión |
 | **Tarjetas propias** | Se añaden desde la interfaz, sin tocar código ni reconstruir la imagen |
 | **359 pruebas** | Incluida una verificación contra sympy por un camino independiente |
+
+## Cómo se ve
+
+| Los mazos y el progreso | Una tarjeta girada |
+|---|---|
+| ![Portada con los seis mazos](docs/capturas/01-mazos.png) | ![Reverso de una tarjeta con su ejercicio resuelto](docs/capturas/02-estudio.png) |
+
+Las herramientas de cálculo, con un diagrama generado a partir de las
+cardinalidades del enunciado:
+
+![Diagrama de Venn de tres conjuntos con sus regiones](docs/capturas/03-herramientas-venn.png)
 
 ## Puesta en marcha
 
