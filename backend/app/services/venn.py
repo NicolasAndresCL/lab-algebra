@@ -7,12 +7,17 @@ defecto revienta al crear la figura.
 Cada figura se cierra explícitamente (`plt.close`). Sin eso, un servidor que
 atiende miles de peticiones acumula figuras en memoria hasta caerse — matplotlib
 mantiene una referencia global a cada figura abierta.
+
+El fondo y el color de la tinta son **parámetros**, no constantes: la interfaz
+tiene cuatro temas y un PNG de fondo blanco fijo se ve como un foco encendido
+en mitad de una pantalla negra.
 """
 
 from __future__ import annotations
 
 import io
 import json
+from dataclasses import dataclass
 from functools import lru_cache
 
 import matplotlib
@@ -25,10 +30,26 @@ from matplotlib_venn import venn2, venn3
 from app.services.conjuntos import EspecificacionVenn, RegionesDos, RegionesTres
 
 _COLORES = ("#1f6feb", "#d97706", "#15803d")
-_FONDO = "#ffffff"
+FONDO_POR_DEFECTO = "#ffffff"
+TINTA_POR_DEFECTO = "#111827"
 
 
-def _dibujar_dos(regiones: RegionesDos, titulo: str) -> bytes:
+@dataclass(frozen=True)
+class Paleta:
+    """Los dos colores que dependen del tema de quien mira el diagrama."""
+
+    fondo: str = FONDO_POR_DEFECTO
+    tinta: str = TINTA_POR_DEFECTO
+
+    @classmethod
+    def desde_dict(cls, datos: dict) -> Paleta:
+        return cls(
+            fondo=str(datos.get("fondo") or FONDO_POR_DEFECTO),
+            tinta=str(datos.get("tinta") or TINTA_POR_DEFECTO),
+        )
+
+
+def _dibujar_dos(regiones: RegionesDos, titulo: str, paleta: Paleta) -> bytes:
     figura, ejes = plt.subplots(figsize=(6.0, 4.2), dpi=140)
     try:
         diagrama = venn2(
@@ -38,24 +59,16 @@ def _dibujar_dos(regiones: RegionesDos, titulo: str) -> bytes:
             alpha=0.45,
             ax=ejes,
         )
-        for etiqueta in diagrama.set_labels or []:
-            if etiqueta is not None:
-                etiqueta.set_fontsize(13)
-                etiqueta.set_fontweight("bold")
-        for etiqueta in diagrama.subset_labels or []:
-            if etiqueta is not None:
-                etiqueta.set_fontsize(12)
-
-        _etiqueta_fuera(ejes, regiones.ninguno, arriba=True)
-        if titulo:
-            ejes.set_title(titulo, fontsize=12, pad=12)
-        _marco_universo(ejes)
-        return _a_png(figura)
+        _rotular(diagrama, paleta, tamano_subconjunto=12)
+        _etiqueta_fuera(ejes, regiones.ninguno, paleta, arriba=True)
+        _titular(ejes, titulo, paleta)
+        _marco_universo(ejes, paleta)
+        return _a_png(figura, paleta)
     finally:
         plt.close(figura)
 
 
-def _dibujar_tres(regiones: RegionesTres, titulo: str) -> bytes:
+def _dibujar_tres(regiones: RegionesTres, titulo: str, paleta: Paleta) -> bytes:
     figura, ejes = plt.subplots(figsize=(6.4, 5.0), dpi=140)
     try:
         # El orden que espera venn3 es (Abc, aBc, ABc, abC, AbC, aBC, ABC).
@@ -69,24 +82,38 @@ def _dibujar_tres(regiones: RegionesTres, titulo: str) -> bytes:
             alpha=0.42,
             ax=ejes,
         )
-        for etiqueta in diagrama.set_labels or []:
-            if etiqueta is not None:
-                etiqueta.set_fontsize(13)
-                etiqueta.set_fontweight("bold")
-        for etiqueta in diagrama.subset_labels or []:
-            if etiqueta is not None:
-                etiqueta.set_fontsize(11)
-
-        _etiqueta_fuera(ejes, regiones.ninguno, arriba=False)
-        if titulo:
-            ejes.set_title(titulo, fontsize=12, pad=12)
-        _marco_universo(ejes)
-        return _a_png(figura)
+        _rotular(diagrama, paleta, tamano_subconjunto=11)
+        _etiqueta_fuera(ejes, regiones.ninguno, paleta, arriba=False)
+        _titular(ejes, titulo, paleta)
+        _marco_universo(ejes, paleta)
+        return _a_png(figura, paleta)
     finally:
         plt.close(figura)
 
 
-def _etiqueta_fuera(ejes, ninguno: int, arriba: bool) -> None:
+def _rotular(diagrama, paleta: Paleta, tamano_subconjunto: int) -> None:
+    """Aplica el color de la tinta a los nombres y a los números.
+
+    Sin esto, matplotlib-venn los deja en negro y desaparecen sobre cualquiera
+    de los temas oscuros.
+    """
+    for etiqueta in diagrama.set_labels or []:
+        if etiqueta is not None:
+            etiqueta.set_fontsize(13)
+            etiqueta.set_fontweight("bold")
+            etiqueta.set_color(paleta.tinta)
+    for etiqueta in diagrama.subset_labels or []:
+        if etiqueta is not None:
+            etiqueta.set_fontsize(tamano_subconjunto)
+            etiqueta.set_color(paleta.tinta)
+
+
+def _titular(ejes, titulo: str, paleta: Paleta) -> None:
+    if titulo:
+        ejes.set_title(titulo, fontsize=12, pad=12, color=paleta.tinta)
+
+
+def _etiqueta_fuera(ejes, ninguno: int, paleta: Paleta, arriba: bool) -> None:
     """Escribe cuántos elementos quedan fuera de todos los círculos.
 
     La esquina cambia según el número de conjuntos porque matplotlib-venn
@@ -101,36 +128,45 @@ def _etiqueta_fuera(ejes, ninguno: int, arriba: bool) -> None:
     ejes.text(
         0.015, y, f"Fuera: {ninguno}",
         transform=ejes.transAxes, ha="left", va=alineacion, fontsize=11,
-        bbox={"facecolor": "white", "edgecolor": "#94a3b8", "boxstyle": "round,pad=0.35"},
+        color=paleta.tinta,
+        bbox={
+            "facecolor": paleta.fondo,
+            "edgecolor": paleta.tinta,
+            "alpha": 0.85,
+            "boxstyle": "round,pad=0.35",
+        },
     )
 
 
-def _marco_universo(ejes) -> None:
+def _marco_universo(ejes, paleta: Paleta) -> None:
     """Dibuja el rectángulo del conjunto universal alrededor de los círculos."""
     for lado in ejes.spines.values():
         lado.set_visible(True)
-        lado.set_color("#334155")
+        lado.set_color(paleta.tinta)
+        lado.set_alpha(0.45)
         lado.set_linewidth(1.2)
     ejes.set_xticks([])
     ejes.set_yticks([])
+    ejes.set_facecolor(paleta.fondo)
 
 
-def _a_png(figura) -> bytes:
+def _a_png(figura, paleta: Paleta) -> bytes:
     buffer = io.BytesIO()
-    figura.savefig(buffer, format="png", bbox_inches="tight", facecolor=_FONDO)
+    figura.savefig(buffer, format="png", bbox_inches="tight", facecolor=paleta.fondo)
     return buffer.getvalue()
 
 
 def generar_png(especificacion: dict) -> bytes:
     """Genera el PNG de un diagrama a partir de su especificación."""
     spec = EspecificacionVenn.desde_dict(especificacion)
+    paleta = Paleta.desde_dict(especificacion)
     regiones = spec.resolver_regiones()
     if isinstance(regiones, RegionesDos):
-        return _dibujar_dos(regiones, spec.titulo)
-    return _dibujar_tres(regiones, spec.titulo)
+        return _dibujar_dos(regiones, spec.titulo, paleta)
+    return _dibujar_tres(regiones, spec.titulo, paleta)
 
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=256)
 def _generar_cacheado(especificacion_json: str) -> bytes:
     return generar_png(json.loads(especificacion_json))
 
@@ -138,7 +174,8 @@ def _generar_cacheado(especificacion_json: str) -> bytes:
 def generar_png_cacheado(especificacion: dict) -> bytes:
     """Igual que `generar_png`, memorizando por especificación.
 
-    Las tarjetas semilla piden siempre el mismo diagrama; dibujarlo una vez y
-    servir los bytes evita ~150 ms de matplotlib en cada repaso.
+    La clave incluye el fondo y la tinta, así que cada tema tiene su propia
+    entrada en la caché: por eso su tamaño es varias veces el número de
+    tarjetas con diagrama.
     """
     return _generar_cacheado(json.dumps(especificacion, sort_keys=True, ensure_ascii=False))

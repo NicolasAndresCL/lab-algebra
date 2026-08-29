@@ -161,6 +161,11 @@ class VennEntrada(BaseModel):
     universo: int | None = None
     titulo: str = ""
     elementos_universo: list[str | int] = Field(default_factory=list)
+    # Colores del tema de quien mira el diagrama. Son opcionales: sin ellos se
+    # dibuja sobre blanco, que es lo correcto para un cliente que no tenga
+    # temas (un script, la documentación de /docs).
+    fondo: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    tinta: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
 
 
 class RegionesSalida(BaseModel):
