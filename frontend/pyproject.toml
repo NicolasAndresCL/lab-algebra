@@ -25,3 +25,7 @@ ignore = [
 # son el mecanismo, no un descuido.
 "app/paginas/__init__.py" = ["F401"]
 "app/main.py" = ["F401", "F403"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
