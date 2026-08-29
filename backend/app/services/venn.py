@@ -46,13 +46,7 @@ def _dibujar_dos(regiones: RegionesDos, titulo: str) -> bytes:
             if etiqueta is not None:
                 etiqueta.set_fontsize(12)
 
-        if regiones.ninguno:
-            # Los que no están en ningún conjunto viven fuera de los círculos,
-            # dentro del rectángulo del universo: hay que dibujarlos aparte.
-            ejes.text(
-                0.97, 0.03, f"Fuera: {regiones.ninguno}",
-                transform=ejes.transAxes, ha="right", va="bottom", fontsize=11,
-            )
+        _etiqueta_fuera(ejes, regiones.ninguno, arriba=True)
         if titulo:
             ejes.set_title(titulo, fontsize=12, pad=12)
         _marco_universo(ejes)
@@ -83,17 +77,32 @@ def _dibujar_tres(regiones: RegionesTres, titulo: str) -> bytes:
             if etiqueta is not None:
                 etiqueta.set_fontsize(11)
 
-        if regiones.ninguno:
-            ejes.text(
-                0.97, 0.03, f"Fuera: {regiones.ninguno}",
-                transform=ejes.transAxes, ha="right", va="bottom", fontsize=11,
-            )
+        _etiqueta_fuera(ejes, regiones.ninguno, arriba=False)
         if titulo:
             ejes.set_title(titulo, fontsize=12, pad=12)
         _marco_universo(ejes)
         return _a_png(figura)
     finally:
         plt.close(figura)
+
+
+def _etiqueta_fuera(ejes, ninguno: int, arriba: bool) -> None:
+    """Escribe cuántos elementos quedan fuera de todos los círculos.
+
+    La esquina cambia según el número de conjuntos porque matplotlib-venn
+    coloca ahí las etiquetas: con dos círculos van abajo (queda libre la
+    esquina superior) y con tres, arriba y abajo al centro (queda libre la
+    inferior izquierda). Fijar una sola posición hacía que el texto se
+    encabalgara con el nombre de un conjunto.
+    """
+    if not ninguno:
+        return
+    y, alineacion = (0.985, "top") if arriba else (0.015, "bottom")
+    ejes.text(
+        0.015, y, f"Fuera: {ninguno}",
+        transform=ejes.transAxes, ha="left", va=alineacion, fontsize=11,
+        bbox={"facecolor": "white", "edgecolor": "#94a3b8", "boxstyle": "round,pad=0.35"},
+    )
 
 
 def _marco_universo(ejes) -> None:
