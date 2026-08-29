@@ -1,0 +1,17 @@
+# El contexto de build es ./backend: este archivo es el que Docker lee.
+tests/
+pyproject.toml
+Dockerfile
+.dockerignore
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.sqlite3
+.env
+.env.*
+!.env.example
+.nicegui/

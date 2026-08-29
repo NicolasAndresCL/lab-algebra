@@ -1,0 +1,107 @@
+# =========================================================================
+# lab-algebra — laboratorio de tarjetas de Álgebra (ST 2026)
+#
+# Levanta el laboratorio completo con un solo comando:
+#
+#     cp .env.example .env      # y edita las claves
+#     docker compose up -d --build
+#
+# Luego, la interfaz en http://localhost:8080 y la API documentada en
+# http://localhost:8000/docs. Se entra con el usuario y la contraseña que
+# declare el .env (por defecto nico / 1234).
+#
+# Tres contenedores en una red propia:
+#   lab-algebra      · interfaz NiceGUI (la que se abre en el navegador)
+#   lab-algebra-api  · API FastAPI
+#   lab-algebra-db   · PostgreSQL 16
+#
+# Los servicios se hablan por el nombre del contenedor dentro de
+# `lab-algebra-net`; solo la interfaz y la API publican puertos al host. La
+# base de datos NO expone el 5432 hacia fuera: nada del host necesita hablar
+# con ella directamente, y publicarla sería abrir una superficie inútil.
+# =========================================================================
+
+name: lab-algebra
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lab-algebra-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-algebra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en tu .env}
+      POSTGRES_DB: ${POSTGRES_DB:-algebra}
+      # El corpus está en español y con tildes; sin esto los ORDER BY sobre
+      # los conceptos ordenarían «Ñ» y «Á» de forma arbitraria.
+      LANG: es_ES.utf8
+    volumes:
+      - datos_postgres:/var/lib/postgresql/data
+    networks:
+      - lab-algebra-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-algebra} -d ${POSTGRES_DB:-algebra}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: lab-algebra-api:1.0.0
+    container_name: lab-algebra-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        # `condition: service_healthy`, no un `depends_on` a secas: si la API
+        # arranca antes de que Postgres acepte conexiones, la creación del
+        # esquema falla con «connection refused» y el contenedor muere.
+        condition: service_healthy
+    environment:
+      ENTORNO: ${ENTORNO:-dev}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-algebra}:${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en tu .env}@lab-algebra-db:5432/${POSTGRES_DB:-algebra}
+      SECRET_KEY: ${SECRET_KEY:?define SECRET_KEY en tu .env (mínimo 32 caracteres)}
+      USUARIO_INICIAL: ${USUARIO_INICIAL:-nico}
+      PASSWORD_INICIAL: ${PASSWORD_INICIAL:-1234}
+      ORIGENES_PERMITIDOS: http://localhost:8080,http://127.0.0.1:8080
+    ports:
+      - "${PUERTO_API:-8000}:8000"
+    networks:
+      - lab-algebra-net
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: lab-algebra-web:1.0.0
+    # Este es el contenedor que se abre en el navegador, así que se queda con
+    # el nombre corto del proyecto.
+    container_name: lab-algebra
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Dentro de la red se resuelve por el nombre del contenedor; «localhost»
+      # aquí apuntaría al propio contenedor web, no a la API.
+      API_URL: http://lab-algebra-api:8000
+      STORAGE_SECRET: ${STORAGE_SECRET:?define STORAGE_SECRET en tu .env}
+      PUERTO: 8080
+    ports:
+      - "${PUERTO_WEB:-8080}:8080"
+    networks:
+      - lab-algebra-net
+
+networks:
+  lab-algebra-net:
+    name: lab-algebra-net
+    driver: bridge
+
+volumes:
+  # Volumen nombrado, no un bind-mount del disco del host: los datos de
+  # Postgres no deben depender de los permisos ni del sistema de archivos de
+  # Windows, donde el contenedor no puede fijar el modo 0700 que exige initdb.
+  datos_postgres:
+    name: lab-algebra-datos
