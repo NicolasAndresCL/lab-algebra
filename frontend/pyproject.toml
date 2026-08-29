@@ -1,0 +1,27 @@
+[project]
+name = "lab-algebra-frontend"
+version = "1.0.0"
+description = "Interfaz NiceGUI del laboratorio de tarjetas de Álgebra."
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 96
+target-version = "py312"
+extend-exclude = [".venv", "env"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+    # Los símbolos lógicos (∧, ∨, →) son el contenido de la aplicación, no
+    # caracteres ambiguos colados por error.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    "B904",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# El registro de páginas se hace importando el paquete: los imports «sin usar»
+# son el mecanismo, no un descuido.
+"app/paginas/__init__.py" = ["F401"]
+"app/main.py" = ["F401", "F403"]
