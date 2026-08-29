@@ -1,0 +1,28 @@
+# --- Entornos virtuales -------------------------------------------------
+env/
+venv/
+.venv/
+
+# --- Python -------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Secretos y configuración local -------------------------------------
+.env
+.env.*
+!.env.example
+
+# --- Documentos internos (no versionados por convención) ----------------
+CLAUDE.md
+memory.md
+pendientes.md
+
+# --- Artefactos ---------------------------------------------------------
+*.png.tmp
+*.log

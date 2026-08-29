@@ -1,0 +1,6 @@
+# Normaliza los finales de línea: en el repositorio siempre LF.
+# Sin esto, los scripts de shell copiados al contenedor llegan con CRLF y
+# `/bin/sh` falla con «bad interpreter».
+* text=auto eol=lf
+*.png binary
+*.pdf binary

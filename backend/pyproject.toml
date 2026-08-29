@@ -1,0 +1,57 @@
+[project]
+name = "lab-algebra-backend"
+version = "1.0.0"
+description = "API de tarjetas de memorización de Álgebra (lógica proposicional y conjuntos)."
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 96
+target-version = "py312"
+extend-exclude = [".venv", "env"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # comprehensions
+    "SIM",  # simplify
+    "RUF",  # reglas propias de ruff
+]
+ignore = [
+    # El motor de lógica define los símbolos canónicos como constantes de una
+    # sola letra ancha; RUF001/003 los confunde con caracteres ambiguos.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    # `raise ... from` no aporta nada en las excepciones de dominio, que se
+    # lanzan sin causa previa.
+    "B904",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Los módulos de contenido son datos: líneas largas y literales repetidos son
+# lo natural en ellos.
+"app/seed/contenido_*.py" = ["E501"]
+"tests/*" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+filterwarnings = [
+    # El TestClient de Starlette avisa de httpx2; no depende de este proyecto.
+    "ignore::DeprecationWarning:starlette.*",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/seed/contenido_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
