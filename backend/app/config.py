@@ -10,7 +10,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Entorno = Literal["dev", "test", "prod"]
@@ -47,15 +47,18 @@ class Ajustes(BaseSettings):
     password_inicial: str = "1234"
 
     # --- CORS -----------------------------------------------------------
-    origenes_permitidos: list[str] = ["http://localhost:8080", "http://127.0.0.1:8080"]
+    # Se declara como cadena separada por comas, NO como `list[str]`: para un
+    # campo de tipo complejo, pydantic-settings intenta interpretar la variable
+    # de entorno como JSON *antes* de llamar a ningún validador, y
+    # `ORIGENES_PERMITIDOS=http://a,http://b` revienta al arrancar con un
+    # SettingsError. Es un fallo que los tests no ven, porque usan el valor por
+    # defecto y nunca pasan por el entorno.
+    origenes_permitidos: str = "http://localhost:8080,http://127.0.0.1:8080"
 
-    @field_validator("origenes_permitidos", mode="before")
-    @classmethod
-    def _separar_por_comas(cls, valor: object) -> object:
-        """Permite declarar la lista como `a,b,c` en una variable de entorno."""
-        if isinstance(valor, str):
-            return [item.strip() for item in valor.split(",") if item.strip()]
-        return valor
+    @property
+    def origenes(self) -> list[str]:
+        """Los orígenes permitidos, ya separados y sin espacios sobrantes."""
+        return [item.strip() for item in self.origenes_permitidos.split(",") if item.strip()]
 
     @property
     def es_produccion(self) -> bool:
