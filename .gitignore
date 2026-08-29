@@ -23,6 +23,10 @@ CLAUDE.md
 memory.md
 pendientes.md
 
+# --- Datos y estado en tiempo de ejecución ------------------------------
+*.sqlite3
+.nicegui/
+
 # --- Artefactos ---------------------------------------------------------
 *.png.tmp
 *.log
