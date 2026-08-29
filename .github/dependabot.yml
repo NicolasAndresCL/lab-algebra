@@ -1,0 +1,43 @@
+# Actualizaciones automáticas de dependencias.
+#
+# Semanal, no diario: este es material de una asignatura y un PR cada mañana
+# se convierte en ruido que nadie mira — que es lo mismo que no tener
+# Dependabot, pero con más notificaciones.
+
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Un solo PR para las actualizaciones de parche: son las que casi nunca
+      # rompen nada y no merecen una revisión por separado.
+      parches:
+        update-types: [patch]
+
+  - package-ecosystem: pip
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      parches:
+        update-types: [patch]
+
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /frontend
+    schedule:
+      interval: weekly
+      day: monday
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

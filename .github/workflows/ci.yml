@@ -1,0 +1,159 @@
+# Pipeline de lab-algebra.
+#
+# La regla que ordena los jobs: el CI mínimo verifica que el proyecto
+# **construye y arranca**, no solo que lintea. Un pipeline que solo pasa un
+# linter da falsa seguridad — los fallos de verdad aparecen al construir la
+# imagen y al levantar el stack.
+#
+# Orden: rápido → lento. No se gastan minutos de build en algo que un linter de
+# un minuto ya descarta.
+#
+#   lint (segundos) → tests (SQLite) → tests contra Postgres → build → arranque
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Permisos mínimos: sin este bloque se hereda el default del repositorio, que a
+# veces es `write` global. Se amplían por job solo si hiciera falta.
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Instalar ruff
+        run: pip install ruff
+      - name: Backend
+        run: ruff check .
+        working-directory: backend
+      - name: Frontend
+        run: ruff check .
+        working-directory: frontend
+
+  test:
+    name: Tests (SQLite)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+        working-directory: backend
+      # Sin `.env` a propósito: la suite inyecta sus propios defaults, así que
+      # correr en un checkout limpio es exactamente lo que se prueba aquí.
+      # La cobertura es condición de fallo, no una métrica decorativa.
+      - name: pytest con cobertura
+        run: pytest -rs --cov --cov-report=term-missing --cov-fail-under=90
+        working-directory: backend
+
+  test-postgres:
+    name: Tests (PostgreSQL real)
+    needs: lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: algebra
+          POSTGRES_PASSWORD: algebra
+          POSTGRES_DB: algebra_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # SQLite es permisivo con los tipos y con las restricciones únicas
+      # diferidas; este job comprueba que el esquema y las consultas también
+      # funcionan en el motor que se usa de verdad.
+      DATABASE_URL: postgresql+psycopg://algebra:algebra@localhost:5432/algebra_test
+      SECRET_KEY: clave-de-integracion-suficientemente-larga-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+        working-directory: backend
+      # `-rs` para que los skips sean visibles: un job que "pasa" porque los
+      # tests se saltaron en silencio es peor que uno en rojo.
+      - name: pytest contra Postgres
+        run: pytest -rs
+        working-directory: backend
+
+  build:
+    name: Build de imágenes
+    needs: [test, test-postgres]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Imagen de la API
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          load: true
+          tags: lab-algebra-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Imagen de la interfaz
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: false
+          load: true
+          tags: lab-algebra-web:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  arranque:
+    name: El stack levanta y responde
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar entorno
+        run: |
+          cp .env.example .env
+          {
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)"
+            echo "SECRET_KEY=$(openssl rand -hex 32)"
+            echo "STORAGE_SECRET=$(openssl rand -hex 16)"
+          } >> .env
+      - name: Levantar el stack
+        run: docker compose up -d --build --wait --wait-timeout 240
+      # Esta es la verificación que justifica el job: no basta con que las
+      # imágenes construyan; el laboratorio tiene que iniciar sesión, servir
+      # los mazos y calcular una tabla de verdad de punta a punta.
+      - name: Prueba de humo de punta a punta
+        run: bash scripts/humo.sh
+      - name: Logs si algo falló
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+      - name: Apagar
+        if: always()
+        run: docker compose down -v
