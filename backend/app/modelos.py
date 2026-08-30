@@ -125,6 +125,7 @@ class Repaso(Base):
     repeticiones: Mapped[int] = mapped_column(Integer, default=0)
     factor_facilidad: Mapped[float] = mapped_column(Float, default=2.5)
     intervalo_dias: Mapped[int] = mapped_column(Integer, default=0)
+    # Misma fuente que el resto del sistema de repaso; ver repaso.hoy_utc().
     proxima_revision: Mapped[date] = mapped_column(
         Date, default=lambda: datetime.now(UTC).date()
     )

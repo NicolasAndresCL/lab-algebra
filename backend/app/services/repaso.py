@@ -11,7 +11,24 @@ exactamente cuando ya no sirve de nada repasarla.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
+
+
+def hoy_utc() -> date:
+    """La fecha de referencia del sistema de repaso, en UTC.
+
+    Existe para que **haya una sola**. Antes, `calcular` programaba la próxima
+    revisión con `date.today()` (fecha local del servidor) y la consulta de la
+    cola filtraba con `datetime.now(UTC).date()`. En cualquier huso al oeste de
+    Greenwich —Chile, sin ir más lejos— esas dos fechas difieren durante las
+    últimas horas del día: una tarjeta acertada quedaba programada para
+    «mañana» en local, que ya era «hoy» en UTC, y volvía a la cola en el acto.
+
+    UTC y no la hora local porque el contenedor no conoce el huso de quien
+    estudia; lo que importa es que las dos mitades usen la misma.
+    """
+    return datetime.now(UTC).date()
+
 
 CALIDAD_MINIMA = 0
 CALIDAD_MAXIMA = 5
@@ -44,7 +61,7 @@ def calcular(
         raise ValueError(
             f"La calidad debe estar entre {CALIDAD_MINIMA} y {CALIDAD_MAXIMA}; llegó {calidad}."
         )
-    hoy = hoy or date.today()
+    hoy = hoy or hoy_utc()
 
     if calidad < UMBRAL_ACIERTO:
         # Fallo: vuelve al principio y se repasa hoy mismo.
@@ -74,7 +91,7 @@ def calcular(
 
 def estado_inicial(hoy: date | None = None) -> EstadoRepaso:
     """Estado de una tarjeta nunca repasada: toca hoy."""
-    hoy = hoy or date.today()
+    hoy = hoy or hoy_utc()
     return EstadoRepaso(
         repeticiones=0,
         factor_facilidad=FACTOR_INICIAL,

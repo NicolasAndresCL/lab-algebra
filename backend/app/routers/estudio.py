@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
@@ -51,7 +51,7 @@ def cola_de_estudio(
     Las nunca vistas no tienen fila en `repasos`, así que hace falta un LEFT
     JOIN: con un INNER JOIN la cola de un usuario nuevo saldría vacía.
     """
-    hoy = datetime.now(UTC).date()
+    hoy = svc_repaso.hoy_utc()
     consulta = (
         select(Tarjeta)
         .outerjoin(
@@ -131,7 +131,7 @@ def progreso(sesion: SesionDep, usuario: UsuarioDep) -> ProgresoSalida:
         sesion.scalar(
             select(func.count(Repaso.id)).where(
                 Repaso.usuario_id == usuario.id,
-                Repaso.proxima_revision <= date.today(),
+                Repaso.proxima_revision <= svc_repaso.hoy_utc(),
             )
         )
         or 0

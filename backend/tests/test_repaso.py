@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pathlib
 from datetime import date, timedelta
 
 import pytest
@@ -52,6 +53,41 @@ class TestAlgoritmo:
     def test_el_estado_inicial_toca_hoy(self) -> None:
         hoy = date(2026, 3, 1)
         assert repaso.estado_inicial(hoy).proxima_revision == hoy
+
+
+class TestFuenteDeFecha:
+    """Regresión de un bug que solo aparecía a ciertas horas del día.
+
+    `calcular` programaba con `date.today()` (fecha LOCAL del servidor) y la
+    consulta de la cola filtraba con `datetime.now(UTC).date()`. En cualquier
+    huso al oeste de Greenwich las dos difieren durante las últimas horas del
+    día, así que una tarjeta acertada volvía a la cola en el acto — justo por
+    la noche, que es cuando se estudia.
+    """
+
+    def test_un_acierto_se_programa_estrictamente_despues_de_hoy(self) -> None:
+        estado = repaso.calcular(5, repeticiones=0, factor_facilidad=2.5, intervalo_dias=0)
+        assert estado.proxima_revision > repaso.hoy_utc()
+
+    def test_el_estado_inicial_toca_exactamente_hoy(self) -> None:
+        assert repaso.estado_inicial().proxima_revision == repaso.hoy_utc()
+
+    def test_ningun_modulo_usa_la_fecha_local(self) -> None:
+        """`date.today()` depende del huso del servidor; aquí no se usa.
+
+        Es el test que impide que alguien vuelva a mezclar las dos fuentes: el
+        fallo original no lo delataba ninguna prueba salvo por la hora a la que
+        se ejecutara la suite.
+        """
+        raiz = pathlib.Path(__file__).resolve().parent.parent / "app"
+        culpables = [
+            f"{ruta.relative_to(raiz)}:{numero}"
+            for ruta in raiz.rglob("*.py")
+            for numero, linea in enumerate(ruta.read_text(encoding="utf-8").splitlines(), 1)
+            if "date.today()" in linea and not linea.lstrip().startswith(("#", "*"))
+            and "`date.today()`" not in linea
+        ]
+        assert not culpables, f"usan la fecha local en vez de repaso.hoy_utc(): {culpables}"
 
 
 class TestFlujoDeEstudio:
