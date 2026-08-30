@@ -19,6 +19,7 @@ conjuntos su diagrama de Venn dibujado a partir de los datos del enunciado.
 
 - [Qué trae](#qué-trae)
 - [Cómo se ve](#cómo-se-ve)
+- [Temas](#temas)
 - [Puesta en marcha](#puesta-en-marcha)
 - [Cómo se usa](#cómo-se-usa)
 - [Arquitectura](#arquitectura)
@@ -40,7 +41,8 @@ conjuntos su diagrama de Venn dibujado a partir de los datos del enunciado.
 | **Tablas de verdad** | Analizador propio con las precedencias de la asignatura |
 | **Diagramas de Venn** | matplotlib-venn, con las regiones calculadas por inclusión-exclusión |
 | **Tarjetas propias** | Se añaden desde la interfaz, sin tocar código ni reconstruir la imagen |
-| **359 pruebas** | Incluida una verificación contra sympy por un camino independiente |
+| **Cuatro temas** | Tres paletas oscuras y una clara, con el contraste verificado |
+| **425 pruebas** | 374 del backend (con verificación contra sympy) y 51 de las paletas |
 
 ## Cómo se ve
 
@@ -48,10 +50,43 @@ conjuntos su diagrama de Venn dibujado a partir de los datos del enunciado.
 |---|---|
 | ![Portada con los seis mazos](docs/capturas/01-mazos.png) | ![Reverso de una tarjeta con su ejercicio resuelto](docs/capturas/02-estudio.png) |
 
-Las herramientas de cálculo, con un diagrama generado a partir de las
-cardinalidades del enunciado:
+Una tarjeta de conjuntos, con el diagrama generado a partir de las
+cardinalidades del enunciado y con los colores del tema activo:
 
-![Diagrama de Venn de tres conjuntos con sus regiones](docs/capturas/03-herramientas-venn.png)
+![Diagrama de Venn con las regiones calculadas](docs/capturas/03-herramientas-venn.png)
+
+## Temas
+
+Cuatro paletas, con **tres variantes oscuras**. Se cambian desde el botón de
+paleta de la cabecera, a la izquierda del de cerrar sesión, y el cambio es
+**instantáneo: no recarga la página**. La elección se guarda por usuario y
+sobrevive a cerrar el navegador.
+
+| Tema | Fondo | Para qué |
+|---|---|---|
+| **Ónix** (por defecto) | Negro puro `#000000` | Pantallas OLED y estudiar de noche |
+| **Medianoche** | Azul profundo `#0a1120` | Menos contraste; sesiones largas |
+| **Carbón** | Gris cálido `#14120f` | El más suave con la vista bajo luz artificial |
+| **Papel** | Claro `#f4f5f7` | Luz de día o proyectar en clase |
+
+![Selector de temas desplegado](docs/capturas/04-temas.png)
+
+El tema alcanza **también a los diagramas de Venn**: el fondo y el color de los
+rótulos viajan al backend, que dibuja el PNG con esos colores. Un diagrama de
+fondo blanco fijo se vería como un foco encendido en mitad de una pantalla
+negra.
+
+Todo el color vive en variables CSS (`--lab-*` y las `--q-*` de Quasar), no en
+clases fijas de Tailwind. Es lo que permite tener tres oscuros distintos sin
+duplicar una sola clase, y evita el problema de las variantes `dark:` de
+Tailwind, que responden al tema del **sistema operativo** y no al que el usuario
+elige aquí.
+
+Las paletas se prueban: `frontend/tests/test_temas.py` calcula el **contraste
+WCAG** de cada combinación (texto sobre fondo, primario sobre superficie,
+rótulos del Venn) y falla si baja de 4.5 para texto normal o de 3.0 para texto
+grande. Una paleta ilegible no rompe nada —la página carga igual— y por eso no
+la caza ningún linter.
 
 ## Puesta en marcha
 
@@ -177,6 +212,22 @@ backend/app/
 Los servicios no importan FastAPI ni SQLAlchemy: se prueban llamándolos
 directamente, sin levantar nada.
 
+### Por dentro de la interfaz
+
+```
+frontend/app/
+├── main.py            ui.run() y registro de las páginas
+├── config.py          ajustes tipados desde el entorno
+├── api.py             cliente HTTP del backend; traduce el contrato de error
+├── estado.py          sesión del usuario en app.storage.user
+├── temas.py           ← las cuatro paletas y el gestor que las aplica
+├── componentes.py     cabecera, selector de tema, tabla, diagrama
+└── paginas/           login · inicio · estudiar · herramientas · nueva
+    └── tarjeta.py     render compartido por el listado y el estudio
+```
+
+La interfaz no habla nunca con la base de datos: todo pasa por `api.py`.
+
 ### Contrato de error
 
 Todos los errores salen con la misma forma, venga de donde venga el fallo:
@@ -220,7 +271,7 @@ python -m venv .venv
 .venv/Scripts/activate            # Windows;  source .venv/bin/activate en Linux
 
 pip install -r backend/requirements-dev.txt
-pip install -r frontend/requirements.txt
+pip install -r frontend/requirements-dev.txt
 ```
 
 Levantar cada mitad por separado:
@@ -290,7 +341,8 @@ mal copiado no puede producir un diagrama imposible con una respuesta creíble.
 | Job | Qué comprueba |
 |---|---|
 | `lint` | `ruff` sobre backend y frontend |
-| `test` | pytest con SQLite, cobertura mínima del 90 % |
+| `test` | pytest del backend con SQLite, cobertura mínima del 90 % |
+| `test-frontend` | contraste WCAG de las cuatro paletas |
 | `test-postgres` | la misma suite contra PostgreSQL 16 real |
 | `build` | las dos imágenes Docker construyen |
 | `arranque` | el stack levanta, queda sano y pasa la prueba de humo |
@@ -348,6 +400,12 @@ justamente para eso; si tocaste esa línea, vuelve a ponerla.
 La carga se ejecuta al arrancar: `docker compose restart api`. Si la tarjeta la
 creaste desde la interfaz, la semilla no la toca nunca — edítala desde la
 interfaz.
+
+**Elegí un tema y al volver aparece otro.**
+El tema se guarda en `app.storage.user`, que NiceGUI respalda con una cookie
+firmada por `STORAGE_SECRET`. Si esa variable cambia entre arranques, las
+cookies anteriores dejan de validar y la sesión —tema incluido— vuelve al
+punto de partida. Fija `STORAGE_SECRET` en el `.env` y no la regeneres.
 
 **Quiero empezar el progreso de cero.**
 `docker compose down -v` borra el volumen `lab-algebra-datos` y con él todo el
