@@ -407,6 +407,12 @@ firmada por `STORAGE_SECRET`. Si esa variable cambia entre arranques, las
 cookies anteriores dejan de validar y la sesión —tema incluido— vuelve al
 punto de partida. Fija `STORAGE_SECRET` en el `.env` y no la regeneres.
 
+**Tras correr `verificar.sh --completo` ya no veo los contenedores.**
+El script apaga el stack al terminar **solo si no estaba levantado antes**; si
+lo estaba, lo deja como lo encontró. En cualquier caso el volumen
+`lab-algebra-datos` se conserva —el `down` va sin `-v`— así que el progreso de
+estudio no se pierde. Para volver a levantarlo: `docker compose up -d`.
+
 **Quiero empezar el progreso de cero.**
 `docker compose down -v` borra el volumen `lab-algebra-datos` y con él todo el
 historial de repasos. El temario se vuelve a cargar solo en el siguiente

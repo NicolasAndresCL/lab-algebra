@@ -69,11 +69,29 @@ fi
 
 echo
 echo "3. Docker"
+
+# Se recuerda si el laboratorio estaba levantado ANTES de verificar. Este
+# script comprueba cosas; no es asunto suyo dejar apagado lo que el usuario
+# tenía funcionando. La primera versión hacía `down` a secas y se llevaba por
+# delante el stack de quien lo estuviera usando, sin decir nada.
+estaba_levantado=false
+[ -n "$(docker compose ps -q --status running 2>/dev/null)" ] && estaba_levantado=true
 ejecutar "las imágenes construyen" docker compose build
 ejecutar "el stack levanta y queda sano" \
     docker compose up -d --wait --wait-timeout 240
 ejecutar "prueba de humo de punta a punta" bash scripts/humo.sh
-docker compose down > /dev/null 2>&1
+
+# `down` sin `-v`: el volumen lab-algebra-datos se conserva y con él el
+# progreso de estudio. Añadir `-v` aquí borraría el historial de repasos en
+# cada verificación.
+if [ "$estaba_levantado" = true ]; then
+    docker compose up -d --wait --wait-timeout 240 > /dev/null 2>&1
+    echo "  ·      el laboratorio sigue levantado, como estaba antes"
+else
+    docker compose down > /dev/null 2>&1
+    echo "  ·      stack apagado (no estaba levantado antes de verificar)"
+    echo "         para usarlo: docker compose up -d"
+fi
 
 echo
 if [ "$fallos" -eq 0 ]; then
