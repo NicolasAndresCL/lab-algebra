@@ -1,6 +1,6 @@
 # lab-algebra
 
-[![CI](https://github.com/nicolascanoleal/lab-algebra/actions/workflows/ci.yml/badge.svg)](https://github.com/nicolascanoleal/lab-algebra/actions/workflows/ci.yml)
+[![CI](https://github.com/NicolasAndresCL/lab-algebra/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasAndresCL/lab-algebra/actions/workflows/ci.yml)
 
 Laboratorio de tarjetas de memorización para la asignatura de **Álgebra**
 (Universidad Santo Tomás, 2026): unidades de **lógica proposicional** y
