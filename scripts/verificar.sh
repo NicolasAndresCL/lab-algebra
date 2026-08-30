@@ -50,8 +50,10 @@ echo
 echo "2. Tests"
 # El umbral de cobertura es condición de fallo, igual que en el CI: que los
 # tests pasen no basta si dejaron de cubrir la mitad del código.
-ejecutar "pytest con cobertura (mínimo 90 %)" \
+ejecutar "backend: pytest con cobertura (mínimo 90 %)" \
     bash -c "cd backend && '$PY' -m pytest -rs -q --cov --cov-report=term-missing --cov-fail-under=90"
+ejecutar "interfaz: contraste de las paletas" \
+    bash -c "cd frontend && STORAGE_SECRET=clave-de-pruebas '$PY' -m pytest -rs -q"
 
 if [ "$completo" = false ]; then
     echo

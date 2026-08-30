@@ -65,6 +65,28 @@ jobs:
         run: pytest -rs --cov --cov-report=term-missing --cov-fail-under=90
         working-directory: backend
 
+  test-frontend:
+    name: Tests (interfaz)
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+        working-directory: frontend
+      # Comprueban el contraste real de cada paleta. Una combinación ilegible
+      # no rompe nada —la página carga igual— y por eso no la caza ni el
+      # linter ni una revisión rápida de la pantalla en la que uno trabajaba.
+      - name: pytest de los temas
+        run: pytest -rs
+        working-directory: frontend
+        env:
+          STORAGE_SECRET: clave-de-pruebas-de-la-interfaz
+
   test-postgres:
     name: Tests (PostgreSQL real)
     needs: lint
@@ -106,7 +128,7 @@ jobs:
 
   build:
     name: Build de imágenes
-    needs: [test, test-postgres]
+    needs: [test, test-frontend, test-postgres]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
