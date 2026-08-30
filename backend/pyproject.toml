@@ -38,6 +38,11 @@ ignore = [
 "tests/*" = ["E501"]
 
 [tool.pytest.ini_options]
+# `pythonpath` hace que `app` sea importable con CUALQUIER invocación. Sin
+# esto, `python -m pytest` funciona (Python mete el directorio actual en
+# sys.path) pero `pytest` a secas no —que es justo como lo llama el CI— y la
+# suite entera muere con «ModuleNotFoundError: No module named 'app'».
+pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 filterwarnings = [

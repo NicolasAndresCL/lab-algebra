@@ -22,6 +22,15 @@ for candidato in "$raiz/.venv/Scripts/python.exe" "$raiz/.venv/bin/python"; do
 done
 PY="${PY:-python3}"
 
+# El CI invoca `pytest`, NO `python -m pytest`. No son equivalentes: la segunda
+# forma mete el directorio actual en sys.path y la primera no. Usar aquí la
+# cómoda enmascaró un fallo que tumbó los tres jobs de tests en el primer push.
+# Este script tiene que llamar exactamente a lo mismo que el runner.
+for candidato in "$raiz/.venv/Scripts/pytest.exe" "$raiz/.venv/bin/pytest"; do
+    [ -x "$candidato" ] && PYTEST="$candidato" && break
+done
+PYTEST="${PYTEST:-pytest}"
+
 fallos=0
 completo=false
 [ "${1:-}" = "--completo" ] && completo=true
@@ -40,7 +49,9 @@ ejecutar() {  # <descripción> <comando...>
     fi
 }
 
-echo "Verificación de lab-algebra (intérprete: $PY)"
+echo "Verificación de lab-algebra"
+echo "  intérprete: $PY"
+echo "  pytest:     $PYTEST"
 echo
 echo "1. Lint"
 ejecutar "ruff — backend" "$PY" -m ruff check backend
@@ -51,9 +62,9 @@ echo "2. Tests"
 # El umbral de cobertura es condición de fallo, igual que en el CI: que los
 # tests pasen no basta si dejaron de cubrir la mitad del código.
 ejecutar "backend: pytest con cobertura (mínimo 90 %)" \
-    bash -c "cd backend && '$PY' -m pytest -rs -q --cov --cov-report=term-missing --cov-fail-under=90"
+    bash -c "cd backend && '$PYTEST' -rs -q --cov --cov-report=term-missing --cov-fail-under=90"
 ejecutar "interfaz: contraste de las paletas" \
-    bash -c "cd frontend && STORAGE_SECRET=clave-de-pruebas '$PY' -m pytest -rs -q"
+    bash -c "cd frontend && STORAGE_SECRET=clave-de-pruebas '$PYTEST' -rs -q"
 
 if [ "$completo" = false ]; then
     echo
