@@ -16,11 +16,11 @@ idna==3.19
 kiwisolver==1.5.1
 matplotlib==3.11.1
 matplotlib-venn==1.1.2
-numpy==2.5.2
+numpy==2.5.3
 packaging==26.3
 pillow==12.3.0
-psycopg==3.3.4
-psycopg-binary==3.3.4
+psycopg==3.3.5
+psycopg-binary==3.3.5
 pydantic==2.13.5
 pydantic-settings==2.15.0
 pydantic_core==2.46.5
