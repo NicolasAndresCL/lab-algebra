@@ -6,7 +6,7 @@
 # =========================================================================
 
 # ------------------------------------------------------------------ build
-FROM ubuntu:24.04 AS builder
+FROM ubuntu:25.10 AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -28,7 +28,7 @@ RUN python3.12 -m venv /opt/venv \
     && /opt/venv/bin/pip install -r requirements.txt
 
 # ---------------------------------------------------------------- runtime
-FROM ubuntu:24.04 AS runtime
+FROM ubuntu:25.10 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
