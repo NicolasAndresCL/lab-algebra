@@ -88,3 +88,17 @@ class DatosVennInvalidosError(ErrorLabAlgebra):
     codigo = "datos_venn_invalidos"
     http_status = HTTPStatus.UNPROCESSABLE_ENTITY
     mensaje = "Los datos del diagrama de Venn no son consistentes."
+
+
+class SistemaInvalidoError(ErrorLabAlgebra):
+    """El sistema de ecuaciones no se puede leer o no es de los que se resuelven.
+
+    Cubre tanto la forma (matriz que no es cuadrada, orden distinto de 2 o 3)
+    como los coeficientes (un texto que no es un número, un flotante donde debía
+    ir una fracción exacta). No cubre que el sistema no tenga solución: eso no
+    es un error, es una de las tres clasificaciones de la unidad.
+    """
+
+    codigo = "sistema_invalido"
+    http_status = HTTPStatus.UNPROCESSABLE_ENTITY
+    mensaje = "El sistema de ecuaciones no es válido."

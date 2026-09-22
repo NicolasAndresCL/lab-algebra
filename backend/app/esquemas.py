@@ -82,6 +82,7 @@ class TarjetaBase(BaseModel):
     ejercicio_respuesta: str = Field(min_length=1)
     formula: str | None = None
     venn: dict | None = None
+    sistema: dict | None = None
     fuente: str = ""
     orden: int = 0
 
@@ -109,6 +110,7 @@ class TarjetaActualizar(BaseModel):
     ejercicio_respuesta: str | None = None
     formula: str | None = None
     venn: dict | None = None
+    sistema: dict | None = None
     fuente: str | None = None
     orden: int | None = None
 
@@ -188,6 +190,37 @@ class OperacionConjuntosSalida(BaseModel):
     complemento_a: list[str]
     complemento_b: list[str]
     cardinalidades: dict[str, int]
+
+
+# --------------------------------------------------------------------------
+# Sistemas de ecuaciones lineales
+# --------------------------------------------------------------------------
+class SistemaEntrada(BaseModel):
+    """Matriz aumentada de un sistema de 2 × 2 o 3 × 3.
+
+    Los coeficientes viajan como **entero o texto**, nunca como `float`: el
+    motor trabaja con fracciones exactas y aceptar un flotante invitaría a
+    escribir `0.333` donde el enunciado dice `1/3`. Se admite «1/2», «−3» y
+    «0.5» en forma de texto, que `Fraction` convierte sin perder nada.
+    """
+
+    matriz: list[list[int | str]] = Field(min_length=2, max_length=3)
+    incognitas: list[str] | None = Field(default=None, min_length=2, max_length=3)
+    metodo: str | None = None
+
+
+class SistemaSalida(BaseModel):
+    ecuaciones: list[str]
+    incognitas: list[str]
+    clasificacion: str
+    metodo: str
+    valores: dict[str, str]
+    parametros: list[str]
+    formulas: dict[str, str]
+    delta: str | None
+    pasos: list[str]
+    interpretacion: str
+    respuesta: str
 
 
 # --------------------------------------------------------------------------

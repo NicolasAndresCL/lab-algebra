@@ -1,4 +1,4 @@
-"""Herramientas de cálculo: tablas de verdad, operaciones de conjuntos y Venn.
+"""Herramientas de cálculo: lógica, conjuntos, Venn y sistemas de ecuaciones.
 
 Son las que convierten la aplicación en un laboratorio y no en un montón de
 texto: el estudiante escribe su propia fórmula o su propio enunciado y ve el
@@ -17,11 +17,13 @@ from app.esquemas import (
     OperacionConjuntosEntrada,
     OperacionConjuntosSalida,
     RegionesSalida,
+    SistemaEntrada,
+    SistemaSalida,
     TablaVerdadSalida,
     VennEntrada,
 )
 from app.services import conjuntos as svc_conjuntos
-from app.services import logica, venn
+from app.services import ecuaciones, logica, venn
 
 router = APIRouter(prefix="/herramientas", tags=["herramientas"])
 
@@ -110,3 +112,20 @@ def regiones_venn(datos: VennEntrada, _: UsuarioDep) -> RegionesSalida:
 def imagen_venn(datos: VennEntrada, _: UsuarioDep) -> Response:
     png = venn.generar_png_cacheado(datos.model_dump())
     return Response(content=png, media_type="image/png")
+
+
+@router.post(
+    "/ecuaciones",
+    response_model=SistemaSalida,
+    summary="Resolver y clasificar un sistema lineal de 2×2 o 3×3",
+)
+def resolver_sistema(datos: SistemaEntrada, _: UsuarioDep) -> SistemaSalida:
+    """Resuelve con aritmética exacta y devuelve el desarrollo paso a paso.
+
+    Un sistema sin solución **no** es un error: «incompatible» es una de las
+    tres clasificaciones de la unidad y sale con un 200 como las otras dos. El
+    422 queda para lo que de verdad está mal escrito (una matriz que no es
+    cuadrada, un coeficiente ilegible).
+    """
+    solucion = ecuaciones.resolver_datos(datos.matriz, datos.incognitas, datos.metodo)
+    return SistemaSalida(**solucion.como_dict())
