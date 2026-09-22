@@ -95,6 +95,10 @@ class Tarjeta(Base):
     formula: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Especificación opcional de un diagrama de Venn (ver services/venn.py).
     venn: Mapped[dict | None] = mapped_column(SAJson, nullable=True)
+    # Sistema lineal opcional: `{"matriz": [[…]], "incognitas": […], "metodo": …}`.
+    # Si está, la tarjeta muestra el sistema resuelto paso a paso por el motor
+    # de `services/ecuaciones.py`, con aritmética exacta.
+    sistema: Mapped[dict | None] = mapped_column(SAJson, nullable=True)
 
     fuente: Mapped[str] = mapped_column(String(180), default="")
     es_semilla: Mapped[bool] = mapped_column(Boolean, default=False)

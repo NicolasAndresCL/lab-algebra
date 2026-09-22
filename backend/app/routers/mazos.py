@@ -15,7 +15,7 @@ from app.esquemas import (
 )
 from app.excepciones import RecursoDuplicadoError, RecursoNoEncontradoError
 from app.modelos import Mazo, Tarjeta
-from app.services import logica, venn
+from app.services import ecuaciones, logica, venn
 
 router = APIRouter(prefix="/mazos", tags=["mazos"])
 router_tarjetas = APIRouter(prefix="/tarjetas", tags=["tarjetas"])
@@ -35,8 +35,12 @@ def _obtener_tarjeta(sesion: SesionDep, tarjeta_id: int) -> Tarjeta:
     return tarjeta
 
 
-def _validar_contenido_calculado(formula: str | None, especificacion: dict | None) -> None:
-    """Rechaza una fórmula o un diagrama que no se pueden calcular.
+def _validar_contenido_calculado(
+    formula: str | None,
+    especificacion: dict | None,
+    sistema: dict | None = None,
+) -> None:
+    """Rechaza una fórmula, un diagrama o un sistema que no se pueden calcular.
 
     Se comprueba **al guardar**, no al mostrar: si no, la tarjeta se crea sin
     problema y revienta después, en mitad de un repaso.
@@ -45,6 +49,12 @@ def _validar_contenido_calculado(formula: str | None, especificacion: dict | Non
         logica.construir_tabla(formula)
     if especificacion:
         venn.generar_png(especificacion)
+    if sistema:
+        ecuaciones.resolver_datos(
+            sistema.get("matriz"),
+            sistema.get("incognitas"),
+            sistema.get("metodo"),
+        )
 
 
 # --------------------------------------------------------------------------
@@ -136,7 +146,7 @@ def crear_tarjeta(datos: TarjetaCrear, sesion: SesionDep, _: UsuarioDep) -> Tarj
         raise RecursoDuplicadoError(
             f"El mazo ya tiene una tarjeta para el concepto «{datos.concepto}»."
         )
-    _validar_contenido_calculado(datos.formula, datos.venn)
+    _validar_contenido_calculado(datos.formula, datos.venn, datos.sistema)
 
     tarjeta = Tarjeta(**datos.model_dump(), es_semilla=False)
     sesion.add(tarjeta)
@@ -154,7 +164,9 @@ def editar_tarjeta(
     tarjeta = _obtener_tarjeta(sesion, tarjeta_id)
     cambios = datos.model_dump(exclude_unset=True)
     _validar_contenido_calculado(
-        cambios.get("formula", tarjeta.formula), cambios.get("venn", tarjeta.venn)
+        cambios.get("formula", tarjeta.formula),
+        cambios.get("venn", tarjeta.venn),
+        cambios.get("sistema", tarjeta.sistema),
     )
     for campo, valor in cambios.items():
         setattr(tarjeta, campo, valor)
