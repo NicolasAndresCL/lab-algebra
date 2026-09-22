@@ -56,11 +56,12 @@ class TestAutenticacion:
 
 
 class TestMazos:
-    def test_lista_los_seis_mazos_con_sus_conteos(self, autenticado: TestClient) -> None:
+    def test_lista_los_nueve_mazos_con_sus_conteos(self, autenticado: TestClient) -> None:
+        """Tres unidades × tres mazos: lógica, conjuntos y sistemas de ecuaciones."""
         mazos = autenticado.get("/api/v1/mazos").json()
-        assert len(mazos) == 6
+        assert len(mazos) == 9
         assert all(m["total_tarjetas"] > 0 for m in mazos)
-        assert sum(m["total_tarjetas"] for m in mazos) >= 50
+        assert sum(m["total_tarjetas"] for m in mazos) >= 70
 
     def test_tarjetas_de_un_mazo_vienen_ordenadas(self, autenticado: TestClient) -> None:
         mazo = autenticado.get("/api/v1/mazos").json()[0]
@@ -232,6 +233,61 @@ class TestHerramientas:
         assert respuesta.status_code == 200
         assert respuesta.headers["content-type"] == "image/png"
         assert respuesta.content.startswith(b"\x89PNG")
+
+    def test_sistema_2x2_con_delta_y_desarrollo(self, autenticado: TestClient) -> None:
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/ecuaciones",
+            json={"matriz": [[1, 1, 3], [1, 2, -8]], "metodo": "reducción"},
+        )
+        assert respuesta.status_code == 200
+        cuerpo = respuesta.json()
+        assert cuerpo["clasificacion"] == "compatible determinado"
+        assert cuerpo["valores"] == {"x": "14", "y": "−11"}
+        assert cuerpo["delta"] == "1"
+        assert len(cuerpo["pasos"]) >= 4
+
+    def test_un_coeficiente_fraccionario_no_se_redondea(
+        self, autenticado: TestClient
+    ) -> None:
+        """La fracción viaja como texto y vuelve como fracción, sin pasar por float."""
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/ecuaciones",
+            json={"matriz": [[3, -4, 4], ["1/2", -3, "-1/2"]]},
+        )
+        assert respuesta.json()["valores"] == {"x": "2", "y": "1/2"}
+
+    def test_un_sistema_incompatible_no_es_un_error(
+        self, autenticado: TestClient
+    ) -> None:
+        """«No tiene solución» es una clasificación de la unidad, no un fallo: 200."""
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/ecuaciones",
+            json={"matriz": [[7, 4, 1], [-7, -4, -3]]},
+        )
+        assert respuesta.status_code == 200
+        assert respuesta.json()["clasificacion"] == "incompatible"
+
+    def test_sistema_3x3_indeterminado(self, autenticado: TestClient) -> None:
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/ecuaciones",
+            json={
+                "matriz": [[1, -1, -1, 1], [-1, 2, -3, -4], [3, -2, -7, 0]],
+                "incognitas": ["x", "y", "z"],
+            },
+        )
+        cuerpo = respuesta.json()
+        assert cuerpo["clasificacion"] == "compatible indeterminado"
+        assert cuerpo["parametros"] == ["z"]
+        assert cuerpo["delta"] is None
+
+    def test_una_matriz_mal_formada_da_422_con_codigo_estable(
+        self, autenticado: TestClient
+    ) -> None:
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/ecuaciones", json={"matriz": [[1, 1, 3], [1, 2]]}
+        )
+        assert respuesta.status_code == 422
+        assert respuesta.json()["error"]["codigo"] == "sistema_invalido"
 
 
 class TestContratoDeError:

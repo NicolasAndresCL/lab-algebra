@@ -3,28 +3,32 @@
 Dos capas:
 
 1. **Estructura**: ninguna tarjeta puede quedar sin ejercicio resuelto, sin
-   fuente o con una fórmula/diagrama que no se pueda calcular.
-2. **Resultados**: las clasificaciones y las regiones de Venn que afirman las
-   tarjetas se contrastan con lo que calculan los motores. Los valores
-   esperados de este archivo se leyeron de los PDF de clase, **no** se copiaron
-   del código: si el motor cambiara de comportamiento, este test lo delata.
+   fuente o con una fórmula, un diagrama o un sistema que no se pueda calcular.
+2. **Resultados**: las clasificaciones lógicas, las regiones de Venn y las
+   soluciones de los sistemas que afirman las tarjetas se contrastan con lo que
+   calculan los motores. Los valores esperados de este archivo se leyeron de
+   los PDF de clase —o se resolvieron a mano desde la lámina—, **no** se
+   copiaron del código: si un motor cambiara de comportamiento, este test lo
+   delata.
 """
 
 from __future__ import annotations
 
+from fractions import Fraction
+
 import pytest
 
 from app.seed.cargar import MAZOS
-from app.services import conjuntos, logica, venn
+from app.services import conjuntos, ecuaciones, logica, venn
 
 TARJETAS = [(mazo["slug"], tarjeta) for mazo in MAZOS for tarjeta in mazo["tarjetas"]]
 IDS = [f"{slug}::{t['concepto']}" for slug, t in TARJETAS]
 
 
 class TestEstructura:
-    def test_hay_contenido_de_las_dos_unidades(self) -> None:
+    def test_hay_contenido_de_las_tres_unidades(self) -> None:
         unidades = {mazo["unidad"] for mazo in MAZOS}
-        assert unidades == {"Lógica", "Conjuntos"}
+        assert unidades == {"Lógica", "Conjuntos", "Ecuaciones"}
 
     def test_los_slugs_de_mazo_son_unicos(self) -> None:
         slugs = [mazo["slug"] for mazo in MAZOS]
@@ -68,6 +72,28 @@ class TestEstructura:
         if especificacion:
             png = venn.generar_png(especificacion)
             assert png.startswith(b"\x89PNG"), "el resultado no es un PNG válido"
+
+    @pytest.mark.parametrize(("slug", "tarjeta"), TARJETAS, ids=IDS)
+    def test_los_sistemas_se_pueden_resolver(self, slug: str, tarjeta: dict) -> None:
+        declarado = tarjeta.get("sistema")
+        if declarado:
+            ecuaciones.resolver_datos(
+                declarado["matriz"],
+                declarado.get("incognitas"),
+                declarado.get("metodo"),
+            )
+
+    @pytest.mark.parametrize(("slug", "tarjeta"), TARJETAS, ids=IDS)
+    def test_ningun_sistema_lleva_un_coeficiente_con_coma(
+        self, slug: str, tarjeta: dict
+    ) -> None:
+        """Un 0.333 guardado en la base ya no se puede volver a leer como 1/3."""
+        declarado = tarjeta.get("sistema")
+        if declarado:
+            planos = [valor for fila in declarado["matriz"] for valor in fila]
+            assert not any(isinstance(valor, float) for valor in planos), (
+                f"{slug}::{tarjeta['concepto']} guarda un flotante; usa «1/2» o «39/5»"
+            )
 
 
 # --------------------------------------------------------------------------
@@ -167,3 +193,144 @@ def test_las_regiones_negativas_se_rechazan() -> None:
 
     with pytest.raises(DatosVennInvalidosError):
         conjuntos.regiones_dos(n_a=10, n_b=10, n_ab=15)
+
+
+# --------------------------------------------------------------------------
+# Sistemas de las tarjetas: clasificación y solución leídas del material
+# --------------------------------------------------------------------------
+# Misma disciplina que `CLASIFICACIONES_ESPERADAS`: cada valor está **resuelto
+# a mano desde el enunciado de la lámina**, no copiado de lo que devuelve el
+# motor. Copiarlo anularía el sentido de la comprobación — el test pasaría
+# aunque el motor se equivocara, porque estaría comparándose consigo mismo.
+#
+# Clave: el concepto de la tarjeta. Valor: clasificación, solución exacta
+# (vacía si no es determinado) y, en los 2 × 2, el Δ que pide el libro.
+SISTEMAS_ESPERADOS: dict[str, dict] = {
+    "Solución de un sistema": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(1),
+        "valores": {"x": Fraction(14), "y": Fraction(-11)},
+    },
+    "Matriz aumentada": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(6),
+        "valores": {"x": Fraction(-1, 2), "y": Fraction(-2, 3)},
+    },
+    "Interpretación geométrica en el plano": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(9),
+        "valores": {"x": Fraction(2), "y": Fraction(-1)},
+    },
+    "Interpretación geométrica en el espacio": {
+        "clasificacion": "compatible determinado",
+        "delta": None,
+        "valores": {"x": Fraction(2), "y": Fraction(-2), "z": Fraction(1)},
+    },
+    "Método de sustitución": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(-23),
+        "valores": {"x": Fraction(-2), "y": Fraction(4)},
+    },
+    "Método de igualación": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(-2),
+        "valores": {"x": Fraction(-2), "y": Fraction(-5)},
+    },
+    "Método de reducción": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(3, 2),
+        "valores": {"x": Fraction(4), "y": Fraction(1)},
+    },
+    "Sistemas con coeficientes fraccionarios": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(-7),
+        "valores": {"x": Fraction(2), "y": Fraction(1, 2)},
+    },
+    "Planteamiento de un problema": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(-2),
+        "valores": {"x": Fraction(30), "y": Fraction(25)},
+    },
+    "Problema de precios": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(-7),
+        # 1,20 € y 1,80 €, escritos como fracción exacta.
+        "valores": {"x": Fraction(6, 5), "y": Fraction(9, 5)},
+    },
+    "Sistema homogéneo": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(85),
+        "valores": {"x": Fraction(0), "y": Fraction(0)},
+    },
+    "Determinante Δ de un 2 × 2": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(6),
+        "valores": {"x": Fraction(-5, 2), "y": Fraction(2)},
+    },
+    "Compatible determinado": {
+        "clasificacion": "compatible determinado",
+        "delta": Fraction(-301),
+        "valores": {"x": Fraction(-127, 301), "y": Fraction(152, 301)},
+    },
+    "Compatible indeterminado": {
+        "clasificacion": "compatible indeterminado",
+        "delta": Fraction(0),
+        "valores": {},
+    },
+    "Incompatible": {
+        "clasificacion": "incompatible",
+        "delta": Fraction(0),
+        "valores": {},
+    },
+    "Resolver un 3 × 3 por sustitución": {
+        "clasificacion": "compatible determinado",
+        "delta": None,
+        "valores": {"x": Fraction(2), "y": Fraction(-2), "z": Fraction(2)},
+    },
+    "Un 3 × 3 sin solución": {
+        "clasificacion": "incompatible",
+        "delta": None,
+        "valores": {},
+    },
+    "Un 3 × 3 con infinitas soluciones": {
+        "clasificacion": "compatible indeterminado",
+        "delta": None,
+        "valores": {},
+    },
+}
+
+TARJETAS_CON_SISTEMA = [(slug, t) for slug, t in TARJETAS if t.get("sistema")]
+
+
+@pytest.mark.parametrize(
+    ("slug", "tarjeta"),
+    TARJETAS_CON_SISTEMA,
+    ids=[t["concepto"] for _, t in TARJETAS_CON_SISTEMA],
+)
+def test_los_sistemas_del_temario_dan_lo_que_dice_la_lamina(
+    slug: str, tarjeta: dict
+) -> None:
+    esperado = SISTEMAS_ESPERADOS.get(tarjeta["concepto"])
+    assert esperado is not None, (
+        f"«{tarjeta['concepto']}» declara un sistema pero no tiene su resultado "
+        f"esperado en SISTEMAS_ESPERADOS. Resuélvelo a mano desde la lámina."
+    )
+    declarado = tarjeta["sistema"]
+    solucion = ecuaciones.resolver_datos(
+        declarado["matriz"], declarado.get("incognitas"), declarado.get("metodo")
+    )
+    assert solucion.clasificacion == esperado["clasificacion"]
+    assert solucion.delta == esperado["delta"]
+    assert solucion.valores == esperado["valores"]
+
+
+def test_toda_tarjeta_con_sistema_tiene_resultado_esperado() -> None:
+    """La comprobación que obliga a mantener la disciplina al añadir tarjetas."""
+    declarados = {t["concepto"] for _, t in TARJETAS_CON_SISTEMA}
+    assert declarados <= set(SISTEMAS_ESPERADOS), (
+        f"sin resultado esperado: {sorted(declarados - set(SISTEMAS_ESPERADOS))}"
+    )
+    assert set(SISTEMAS_ESPERADOS) <= declarados, (
+        f"esperados que ya no corresponden a ninguna tarjeta: "
+        f"{sorted(set(SISTEMAS_ESPERADOS) - declarados)}"
+    )

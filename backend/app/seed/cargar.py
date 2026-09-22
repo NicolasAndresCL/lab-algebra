@@ -19,12 +19,13 @@ from sqlalchemy.orm import Session
 from app.config import obtener_ajustes
 from app.modelos import Mazo, Tarjeta, Usuario
 from app.seed.contenido_conjuntos import MAZOS_CONJUNTOS
+from app.seed.contenido_ecuaciones import MAZOS_ECUACIONES
 from app.seed.contenido_logica import MAZOS_LOGICA
 from app.seguridad import hashear_password
 
 logger = logging.getLogger("app.seed")
 
-MAZOS: list[dict] = [*MAZOS_LOGICA, *MAZOS_CONJUNTOS]
+MAZOS: list[dict] = [*MAZOS_LOGICA, *MAZOS_CONJUNTOS, *MAZOS_ECUACIONES]
 
 CAMPOS_TARJETA = (
     "pregunta",
@@ -36,6 +37,7 @@ CAMPOS_TARJETA = (
     "ejercicio_respuesta",
     "formula",
     "venn",
+    "sistema",
     "fuente",
     "orden",
 )

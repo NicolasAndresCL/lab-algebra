@@ -43,11 +43,15 @@ def crear_app() -> FastAPI:
     aplicacion = FastAPI(
         title="lab-algebra — API",
         version=__version__,
-        summary="Tarjetas de memorización de Álgebra (lógica proposicional y conjuntos).",
+        summary=(
+            "Tarjetas de memorización de Álgebra: lógica proposicional, conjuntos "
+            "y sistemas de ecuaciones lineales."
+        ),
         description=(
             "Backend del laboratorio de Álgebra ST 2026. Sirve los mazos de tarjetas, "
-            "calcula tablas de verdad, resuelve operaciones de conjuntos y genera "
-            "diagramas de Venn."
+            "calcula tablas de verdad, resuelve operaciones de conjuntos, genera "
+            "diagramas de Venn y resuelve sistemas de ecuaciones lineales con "
+            "aritmética exacta."
         ),
         lifespan=ciclo_de_vida,
         docs_url="/docs",
