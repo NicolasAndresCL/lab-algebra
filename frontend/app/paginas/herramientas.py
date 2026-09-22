@@ -1,4 +1,4 @@
-"""Laboratorio de cálculo: tablas de verdad, conjuntos y diagramas de Venn."""
+"""Laboratorio de cálculo: lógica, conjuntos, Venn y sistemas de ecuaciones."""
 
 from __future__ import annotations
 
@@ -11,9 +11,10 @@ from app.api import (
     imagen_venn,
     operar_conjuntos,
     regiones_venn,
+    resolver_sistema,
     tabla_de_verdad,
 )
-from app.componentes import cabecera, campo_formula, titulo_pagina
+from app.componentes import cabecera, campo_formula, sistema_resuelto, titulo_pagina
 from app.componentes import tabla_de_verdad as pintar_tabla
 from app.estado import exigir_sesion
 from app.temas import Tema
@@ -36,6 +37,7 @@ def pagina_herramientas() -> None:
             ui.tab("equivalencia", label="Equivalencia", icon="compare_arrows")
             ui.tab("conjuntos", label="Conjuntos", icon="join_inner")
             ui.tab("venn", label="Diagrama de Venn", icon="pie_chart")
+            ui.tab("ecuaciones", label="Sistemas de ecuaciones", icon="grid_on")
         with ui.tab_panels(pestanas, value="tabla").classes("w-full"):
             with ui.tab_panel("tabla"):
                 _panel_tabla(sesion)
@@ -45,6 +47,8 @@ def pagina_herramientas() -> None:
                 _panel_conjuntos(sesion)
             with ui.tab_panel("venn"):
                 _panel_venn(sesion, gestor.tema)
+            with ui.tab_panel("ecuaciones"):
+                _panel_ecuaciones(sesion)
 
 
 # --------------------------------------------------------------------------
@@ -246,6 +250,130 @@ def _panel_venn(sesion: Sesion, tema: Tema) -> None:
     ui.button("Dibujar", icon="play_arrow", on_click=calcular).props("no-caps")
     resultado = ui.column().classes("w-full gap-2 items-center")
     _alternar()
+
+
+# Los tres métodos que enseña la asignatura. No hay Cramer de orden 3, ni
+# matriz inversa, ni rangos: no se vieron en clase, y ofrecerlos aquí
+# desalinearía el laboratorio del curso.
+METODOS = ["reducción", "sustitución", "igualación"]
+
+# La rejilla tiene siempre cuatro columnas —a, b, c y término— y en 2 × 2 se
+# oculta la de c. El término independiente va por tanto en el índice 3, no en
+# el 2: armar la matriz leyendo «las primeras n+1 columnas» mandaría el
+# coeficiente de z como término independiente.
+COLUMNA_TERMINO = 3
+
+# Ejemplos de arranque, para que la pestaña se abra mostrando algo correcto en
+# vez de un formulario vacío: el problema 1 de la lámina 14 (x + y = 3 ;
+# x + 2y = −8) y el sistema 1 de la lámina 4 del PDF de 3 × 3. Cada uno ocupa
+# la rejilla completa, así que al cambiar de orden se carga el que toca — y se
+# pierde lo que hubiera escrito: son dos ejercicios distintos, no el mismo con
+# una fila más.
+EJEMPLOS: dict[int, list[list[str]]] = {
+    2: [
+        ["1", "1", "0", "3"],
+        ["1", "2", "0", "-8"],
+        ["", "", "", ""],
+    ],
+    3: [
+        ["1", "1", "-1", "-1"],
+        ["4", "-3", "2", "16"],
+        ["2", "-2", "-3", "5"],
+    ],
+}
+
+
+def _panel_ecuaciones(sesion: Sesion) -> None:
+    resultado: ui.column
+
+    def leer(campo: ui.input) -> str:
+        """Un hueco vacío es un coeficiente 0, no un error de escritura."""
+        return (campo.value or "").strip() or "0"
+
+    def calcular() -> None:
+        resultado.clear()
+        orden = 3 if tres.value else 2
+        columnas = [*range(orden), COLUMNA_TERMINO]
+        matriz = [[leer(campos[f][c]) for c in columnas] for f in range(orden)]
+        nombres = [
+            (campo.value or "").strip() or defecto
+            for campo, defecto in zip(
+                nombres_campos[:orden], ("x", "y", "z")[:orden], strict=True
+            )
+        ]
+        try:
+            datos = resolver_sistema(sesion, matriz, nombres, metodo.value)
+        except ErrorApi as error:
+            with resultado:
+                _mostrar_error(error, "")
+            return
+        with resultado:
+            sistema_resuelto(datos)
+
+    ui.markdown(
+        "Escribe los **coeficientes**, no las ecuaciones. Se admiten fracciones "
+        "(`1/2`, `-19/2`): el motor trabaja con aritmética exacta, así que 1/3 sale "
+        "como 1/3 y nunca como 0,333. Un hueco vacío cuenta como coeficiente 0. "
+        "Cambiar entre 2 × 2 y 3 × 3 **carga el ejemplo de la lámina** correspondiente."
+    ).classes("text-sm lab-tenue")
+
+    tres = ui.switch("Tres ecuaciones (3 × 3)", value=False, on_change=lambda: alternar())
+
+    nombres_campos: list[ui.input] = []
+    with ui.row().classes("w-full gap-2 flex-wrap items-end"):
+        for defecto in ("x", "y", "z"):
+            nombres_campos.append(
+                ui.input(f"Nombre de «{defecto}»", value=defecto)
+                .props("outlined dense")
+                .classes("flex-1 min-w-[6rem]")
+            )
+
+    campos: list[list[ui.input]] = []
+    filas_ui: list[ui.row] = []
+    for numero in range(3):
+        with ui.row().classes("w-full gap-2 flex-wrap items-center") as fila_ui:
+            ui.label(f"({numero + 1})").classes("font-mono w-8 lab-tenue")
+            fila = [
+                ui.input(etiqueta, value=EJEMPLOS[2][numero][columna])
+                .props("outlined dense")
+                .classes("flex-1 min-w-[4.5rem]")
+                for columna, etiqueta in enumerate(("a", "b", "c", "término"))
+            ]
+            for campo in fila:
+                campo.on("keydown.enter", calcular)
+            campos.append(fila)
+        filas_ui.append(fila_ui)
+
+    metodo = (
+        ui.select(METODOS, value="reducción", label="Método del desarrollo")
+        .props("outlined dense")
+        .classes("w-full sm:w-72")
+    )
+    aviso_metodo = ui.label(
+        "En 3 × 3 el desarrollo va por reducción (eliminación de Gauss-Jordan), "
+        "que es el método sistemático."
+    ).classes("text-xs lab-tenue")
+
+    def alternar() -> None:
+        """Muestra u oculta la tercera incógnita y la tercera ecuación."""
+        hay_tres = bool(tres.value)
+        nombres_campos[2].set_visibility(hay_tres)
+        filas_ui[2].set_visibility(hay_tres)
+        for fila in campos:
+            fila[2].set_visibility(hay_tres)
+        ejemplo = EJEMPLOS[3 if hay_tres else 2]
+        for numero, fila in enumerate(campos):
+            for columna, campo in enumerate(fila):
+                campo.set_value(ejemplo[numero][columna])
+        if hay_tres:
+            metodo.set_value("reducción")
+        metodo.set_enabled(not hay_tres)
+        aviso_metodo.set_visibility(hay_tres)
+        calcular()
+
+    ui.button("Resolver", icon="play_arrow", on_click=calcular).props("no-caps")
+    resultado = ui.column().classes("w-full gap-2")
+    alternar()
 
 
 def _mostrar_error(error: ErrorApi, contexto: str) -> None:

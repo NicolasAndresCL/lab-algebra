@@ -20,6 +20,15 @@ COLOR_CLASIFICACION = {
     "contingencia": "warning",
 }
 
+# Los tres tipos de sistema de la tercera unidad. El indeterminado va en
+# «warning» y no en «positive» aunque sí tenga solución: lo que avisa el color
+# es que la respuesta no es un punto y hay que entregar la familia entera.
+COLOR_SISTEMA = {
+    "compatible determinado": "positive",
+    "compatible indeterminado": "warning",
+    "incompatible": "negative",
+}
+
 
 # --------------------------------------------------------------------------
 # Tema
@@ -141,6 +150,45 @@ def tabla_de_verdad(datos: dict) -> None:
         ui.table(columns=columnas, rows=filas, row_key="c0").props(
             "dense flat bordered"
         ).classes("w-full text-center lab-tabla")
+
+
+def sistema_resuelto(datos: dict) -> None:
+    """Dibuja un sistema ya resuelto por el backend: camino y respuesta.
+
+    El desarrollo va **antes** que la respuesta a propósito: esto es material
+    de estudio, y una tarjeta que enseña primero el resultado invita a saltarse
+    justo lo que hay que aprender.
+    """
+    with ui.column().classes("w-full gap-2"):
+        with ui.row().classes("items-center gap-2 flex-wrap"):
+            ui.badge(datos["clasificacion"].upper()).props(
+                f"color={COLOR_SISTEMA.get(datos['clasificacion'], 'primary')}"
+            )
+            if datos.get("delta") is not None:
+                ui.label(f"Δ = {datos['delta']}").classes("font-mono text-sm")
+            ui.label(f"por {datos['metodo']}").classes("text-sm lab-tenue")
+
+        with ui.card().classes("w-full lab-superficie lab-superficie-alta p-3 gap-1"):
+            ui.label("Sistema").classes("text-xs uppercase lab-tenue")
+            for numero, ecuacion in enumerate(datos["ecuaciones"], start=1):
+                ui.label(f"({numero})  {ecuacion}").classes("font-mono text-sm")
+
+        with (
+            ui.expansion("Desarrollo paso a paso", icon="functions").classes(
+                "w-full lab-superficie"
+            ),
+            ui.column().classes("w-full gap-1 p-2"),
+        ):
+            for paso in datos["pasos"]:
+                ui.label(paso).classes("font-mono text-sm leading-relaxed")
+
+        with ui.row().classes("items-start gap-2 w-full"):
+            ui.icon("check_circle", size="20px").classes("text-positive mt-1")
+            ui.label(datos["respuesta"]).classes("font-medium flex-1")
+        if datos.get("interpretacion"):
+            with ui.row().classes("items-start gap-2 w-full"):
+                ui.icon("landscape", size="18px").classes("text-primary mt-1")
+                ui.label(datos["interpretacion"]).classes("text-sm flex-1 lab-tenue")
 
 
 def diagrama_venn(sesion: Sesion, especificacion: dict, tema: Tema) -> None:

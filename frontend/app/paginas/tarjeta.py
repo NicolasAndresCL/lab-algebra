@@ -15,8 +15,14 @@ from __future__ import annotations
 from nicegui import ui
 
 from app.api import ErrorApi, Sesion
+from app.api import resolver_sistema as pedir_sistema
 from app.api import tabla_de_verdad as pedir_tabla
-from app.componentes import diagrama_venn, parrafo_multilinea, tabla_de_verdad
+from app.componentes import (
+    diagrama_venn,
+    parrafo_multilinea,
+    sistema_resuelto,
+    tabla_de_verdad,
+)
 from app.temas import Tema
 
 
@@ -68,6 +74,11 @@ def reverso(sesion: Sesion, tarjeta: dict, tema: Tema) -> None:
             ui.label("Diagrama de Venn").classes("text-sm font-semibold")
             diagrama_venn(sesion, tarjeta["venn"], tema)
 
+        if tarjeta.get("sistema"):
+            ui.separator().classes("lab-borde")
+            ui.label("El sistema, resuelto por el motor").classes("text-sm font-semibold")
+            _sistema(sesion, tarjeta["sistema"])
+
         if tarjeta.get("fuente"):
             ui.label(f"Fuente: {tarjeta['fuente']}").classes("text-xs lab-tenue mt-2")
 
@@ -77,6 +88,28 @@ def _tabla(sesion: Sesion, formula: str) -> None:
         tabla_de_verdad(pedir_tabla(sesion, formula))
     except ErrorApi as error:
         ui.label(f"No se pudo calcular la tabla: {error}").classes("text-negative text-sm")
+
+
+def _sistema(sesion: Sesion, declarado: dict) -> None:
+    """El sistema de la tarjeta, recalculado en vivo con aritmética exacta.
+
+    Es la segunda mitad de la doble verificación que se ve en pantalla: el
+    desarrollo escrito a mano está arriba, y aquí debajo el que calcula el
+    motor. Si alguna vez discreparan, se notaría al estudiar.
+    """
+    try:
+        sistema_resuelto(
+            pedir_sistema(
+                sesion,
+                declarado["matriz"],
+                declarado.get("incognitas"),
+                declarado.get("metodo"),
+            )
+        )
+    except ErrorApi as error:
+        ui.label(f"No se pudo resolver el sistema: {error}").classes(
+            "text-negative text-sm"
+        )
 
 
 def panel_tarjeta(sesion: Sesion, tarjeta: dict, tema: Tema) -> None:

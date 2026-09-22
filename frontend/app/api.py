@@ -176,6 +176,26 @@ def operar_conjuntos(sesion: Sesion, a: list, b: list, universo: list) -> dict:
     )
 
 
+def resolver_sistema(
+    sesion: Sesion,
+    matriz: list[list],
+    incognitas: list[str] | None = None,
+    metodo: str | None = None,
+) -> dict:
+    """Resuelve un sistema lineal de 2×2 o 3×3 con aritmética exacta.
+
+    Los coeficientes viajan como **texto**, no como número: el backend
+    rechaza los flotantes a propósito para que «1/3» no se convierta en
+    «0.333» por el camino.
+    """
+    cuerpo: dict = {"matriz": matriz}
+    if incognitas:
+        cuerpo["incognitas"] = incognitas
+    if metodo:
+        cuerpo["metodo"] = metodo
+    return _peticion("POST", "/herramientas/ecuaciones", sesion=sesion, json=cuerpo)
+
+
 def regiones_venn(sesion: Sesion, especificacion: dict) -> dict:
     return _peticion(
         "POST", "/herramientas/venn/regiones", sesion=sesion, json=especificacion
