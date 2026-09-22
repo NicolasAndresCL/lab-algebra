@@ -3,7 +3,8 @@
 #
 # Comprueba lo que de verdad importa que funcione: que los tres contenedores
 # están sanos, que se puede iniciar sesión con el usuario del laboratorio, que
-# el temario está cargado y que los motores de cálculo responden.
+# el temario de las TRES unidades está cargado y que los motores de cálculo
+# —lógica, conjuntos y sistemas de ecuaciones— responden.
 #
 # Uso:  bash scripts/humo.sh [URL_API] [URL_WEB]
 
@@ -69,13 +70,21 @@ mazos=$(curl -fsS "${autorizado[@]}" "$API/api/v1/mazos" 2>/dev/null || echo '[]
 total=$(echo "$mazos" | grep -o '"total_tarjetas":[0-9]*' | cut -d: -f2 \
         | awk '{suma += $1} END {print suma + 0}')
 
-comprobar "el temario está cargado (50 tarjetas o más; hay ${total:-0})" \
-    bash -c "[ '${total:-0}' -ge 50 ]"
+comprobar "el temario está cargado (70 tarjetas o más; hay ${total:-0})" \
+    bash -c "[ '${total:-0}' -ge 70 ]"
+
+# Contar tarjetas no basta: un mazo entero podría faltar y el total seguir
+# alto. Las tres unidades tienen que estar sembradas, no «alguna».
+mazos_ecuaciones=$(echo "$mazos" | grep -o '"unidad": *"Ecuaciones"' | wc -l)
+comprobar "la unidad de ecuaciones está sembrada (3 mazos; hay ${mazos_ecuaciones:-0})" \
+    bash -c "[ '${mazos_ecuaciones:-0}' -ge 3 ]"
 
 # --- 4. Motores de cálculo ----------------------------------------------
 # Se manda con los alias ASCII a propósito: así se comprueba de paso que el
 # analizador los acepta desde un cliente que no puede escribir ∧ ni →.
-tabla=$(curl -fsS -X POST "$API/api/v1/herramientas/tabla-verdad"     "${autorizado[@]}" -H 'Content-Type: application/json'     -d '{"formula":"(p ^ q) -> p"}' 2>/dev/null || echo '{}')
+tabla=$(curl -fsS -X POST "$API/api/v1/herramientas/tabla-verdad" \
+    "${autorizado[@]}" -H 'Content-Type: application/json' \
+    -d '{"formula":"(p ^ q) -> p"}' 2>/dev/null || echo '{}')
 comprobar "(p ∧ q) → p se clasifica como tautología" \
     bash -c "echo '$tabla' | grep -q 'tautolog'"
 
@@ -85,6 +94,34 @@ regiones=$(curl -fsS -X POST "$API/api/v1/herramientas/venn/regiones" \
     2>/dev/null || echo '{}')
 comprobar "el problema de los 120 estudiantes da 40 solo Java" \
     bash -c "echo '$regiones' | grep -q '\"solo_a\": *40'"
+
+# Sistemas de ecuaciones: se manda con una fracción como TEXTO, que es como
+# viaja desde la interfaz. Si en algún punto del camino se convirtiera en
+# flotante, «1/2» volvería como «0.5» y esta comprobación lo cantaría.
+#
+# El método va escapado como \u00f3 y no con la «ó» literal: en Git Bash sobre
+# Windows el cuerpo sale del shell en cp1252 y la API responde «error parsing
+# the body», así que la prueba fallaba en la máquina de desarrollo y pasaba en
+# el runner. El JSON con escape Unicode es ASCII puro y llega igual en los dos.
+sistema=$(curl -fsS -X POST "$API/api/v1/herramientas/ecuaciones" \
+    "${autorizado[@]}" -H 'Content-Type: application/json' \
+    -d '{"matriz":[[3,-4,4],["1/2",-3,"-1/2"]],"metodo":"sustituci\u00f3n"}' \
+    2>/dev/null || echo '{}')
+comprobar "el sistema con fracciones da y = 1/2 exacto, sin redondear" \
+    bash -c "echo '$sistema' | grep -q '\"y\": *\"1/2\"'"
+comprobar "y se clasifica como compatible determinado" \
+    bash -c "echo '$sistema' | grep -q 'compatible determinado'"
+comprobar "y el desarrollo se hizo por el método pedido" \
+    bash -c "echo '$sistema' | grep -q 'sustituc'"
+
+# Un sistema sin solución NO es un error de la API: es una de las tres
+# clasificaciones de la unidad y tiene que salir con 200.
+codigo_incompatible=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+    "$API/api/v1/herramientas/ecuaciones" "${autorizado[@]}" \
+    -H 'Content-Type: application/json' \
+    -d '{"matriz":[[7,4,1],[-7,-4,-3]]}')
+comprobar "un sistema incompatible responde 200, no un error" \
+    bash -c "[ '$codigo_incompatible' = '200' ]"
 
 png=$(mktemp)
 curl -fsS -X POST "$API/api/v1/herramientas/venn/imagen" \

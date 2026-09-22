@@ -19,6 +19,19 @@
 # `lab-algebra-net`; solo la interfaz y la API publican puertos al host. La
 # base de datos NO expone el 5432 hacia fuera: nada del host necesita hablar
 # con ella directamente, y publicarla sería abrir una superficie inútil.
+#
+# Las tres unidades del temario —lógica, conjuntos y sistemas de ecuaciones—
+# viven en el mismo contenedor de API: son tres módulos de cálculo sin estado
+# propio, sin puerto propio y sin dependencias distintas. Un servicio aparte
+# por unidad multiplicaría los healthchecks y las entradas de red sin separar
+# nada que estuviera junto por error.
+#
+# El temario se siembra en Postgres al arrancar y por tanto vive en el volumen
+# `lab-algebra-datos`: sobrevive a `docker compose down` junto con el progreso
+# de estudio, y solo `down -v` lo borra. Como la base puede venir creada por
+# una versión anterior, el arranque de la API pone el esquema al día antes de
+# sembrar (`app.db.asegurar_columnas`); sin eso, actualizar sobre el volumen
+# existente moriría en la primera consulta por una columna que no existe.
 # =========================================================================
 
 name: lab-algebra
@@ -50,7 +63,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: lab-algebra-api:1.0.0
+    image: lab-algebra-api:1.1.0
     container_name: lab-algebra-api
     restart: unless-stopped
     depends_on:
@@ -75,7 +88,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: lab-algebra-web:1.0.0
+    image: lab-algebra-web:1.1.0
     # Este es el contenedor que se abre en el navegador, así que se queda con
     # el nombre corto del proyecto.
     container_name: lab-algebra
