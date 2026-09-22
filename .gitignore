@@ -22,6 +22,7 @@ htmlcov/
 CLAUDE.md
 memory.md
 pendientes.md
+aprendizaje.md
 
 # --- Datos y estado en tiempo de ejecución ------------------------------
 *.sqlite3

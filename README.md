@@ -3,15 +3,17 @@
 [![CI](https://github.com/NicolasAndresCL/lab-algebra/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasAndresCL/lab-algebra/actions/workflows/ci.yml)
 
 Laboratorio de tarjetas de memorización para la asignatura de **Álgebra**
-(Universidad Santo Tomás, 2026): unidades de **lógica proposicional** y
-**teoría de conjuntos**.
+(Universidad Santo Tomás, 2026): unidades de **lógica proposicional**,
+**teoría de conjuntos** y **sistemas de ecuaciones lineales**.
 
 No es un fichero de definiciones. Cada tarjeta trae el concepto, su notación,
 una clave para recordarlo y un **ejercicio resuelto paso a paso** sacado del
 material de clase — porque memorizar una definición sin verla aplicada no
 sirve para rendir una prueba. Encima de eso, el laboratorio **calcula**: las
-tarjetas con fórmula muestran su tabla de verdad generada en vivo, y las de
-conjuntos su diagrama de Venn dibujado a partir de los datos del enunciado.
+tarjetas con fórmula muestran su tabla de verdad generada en vivo, las de
+conjuntos su diagrama de Venn dibujado a partir de los datos del enunciado, y
+las de ecuaciones su sistema resuelto paso a paso con **aritmética exacta** —
+donde la respuesta es 1/3 aparece 1/3, nunca 0,333.
 
 ---
 
@@ -36,24 +38,38 @@ conjuntos su diagrama de Venn dibujado a partir de los datos del enunciado.
 
 | | |
 |---|---|
-| **52 tarjetas** | Seis mazos, todos con ejercicio resuelto y fuente anotada |
+| **73 tarjetas** | Nueve mazos, todos con ejercicio resuelto y fuente anotada |
 | **Repetición espaciada** | Variante de SM-2: lo que fallas vuelve hoy, lo que aciertas se aleja |
 | **Tablas de verdad** | Analizador propio con las precedencias de la asignatura |
 | **Diagramas de Venn** | matplotlib-venn, con las regiones calculadas por inclusión-exclusión |
+| **Sistemas lineales** | 2×2 y 3×3 en aritmética exacta: clasificación, Δ y desarrollo paso a paso |
 | **Tarjetas propias** | Se añaden desde la interfaz, sin tocar código ni reconstruir la imagen |
 | **Cuatro temas** | Tres paletas oscuras y una clara, con el contraste verificado |
-| **425 pruebas** | 374 del backend (con verificación contra sympy) y 51 de las paletas |
+| **768 pruebas** | 717 del backend (con verificación contra sympy) y 51 de las paletas |
 
 ## Cómo se ve
 
 | Los mazos y el progreso | Una tarjeta girada |
 |---|---|
-| ![Portada con los seis mazos](docs/capturas/01-mazos.png) | ![Reverso de una tarjeta con su ejercicio resuelto](docs/capturas/02-estudio.png) |
+| ![Portada con los nueve mazos](docs/capturas/01-mazos.png) | ![Reverso de una tarjeta con su ejercicio resuelto](docs/capturas/02-estudio.png) |
 
 Una tarjeta de conjuntos, con el diagrama generado a partir de las
 cardinalidades del enunciado y con los colores del tema activo:
 
 ![Diagrama de Venn con las regiones calculadas](docs/capturas/03-herramientas-venn.png)
+
+Un sistema de 3 × 3 resuelto por la herramienta: el desarrollo es el que sale
+del motor, operación por operación, y termina clasificando y comprobando la
+solución en las tres ecuaciones originales.
+
+![Sistema 3×3 resuelto paso a paso](docs/capturas/06-herramientas-ecuaciones.png)
+
+Y la misma unidad vista desde una tarjeta: arriba el desarrollo escrito a mano
+desde la lámina, debajo el que recalcula el motor. Son dos caminos
+independientes hacia el mismo resultado, y si alguna vez discreparan se vería
+al estudiar.
+
+![Tarjeta de ecuaciones con el sistema resuelto por el motor](docs/capturas/07-tarjeta-sistema.png)
 
 ## Temas
 
@@ -136,7 +152,7 @@ por debajo de «Con esfuerzo» reinicia la serie y la tarjeta vuelve el mismo
 día; las acertadas se alejan progresivamente (1 día, 3 días, y a partir de ahí
 multiplicando por su factor de facilidad).
 
-**Consultar.** «Mazos» lista los seis mazos; dentro de cada uno, las tarjetas
+**Consultar.** «Mazos» lista los nueve mazos; dentro de cada uno, las tarjetas
 se despliegan enteras y hay un buscador que mira tanto el concepto como la
 definición. Esta es la vista para repasar la víspera de la prueba.
 
@@ -151,11 +167,22 @@ definición. Esta es la vista para repasar la víspera de la prueba.
   escritos a mano, más las cardinalidades y el tamaño del conjunto potencia.
 - **Diagramas de Venn** de dos o tres conjuntos a partir de las cardinalidades
   del enunciado: el reparto por regiones lo calcula el motor, no tú.
+- **Sistemas de ecuaciones** de 2 × 2 y 3 × 3, escribiendo los coeficientes en
+  una rejilla. Devuelve la clasificación (compatible determinado /
+  indeterminado / incompatible), el determinante Δ en los 2 × 2, el desarrollo
+  operación por operación y la lectura geométrica —rectas que se cortan,
+  paralelas o coincidentes; tres planos en el espacio—. Se admiten fracciones
+  (`1/2`, `-19/2`) y todo se calcula en **aritmética exacta**: nunca aparece un
+  0,333 donde el enunciado dice 1/3. En 2 × 2 se puede pedir el desarrollo por
+  **sustitución, igualación o reducción**, que son los tres métodos del curso;
+  en 3 × 3 va siempre por reducción, que es el sistemático.
 
 **Añadir material.** «Nueva tarjeta» permite crear tarjetas y mazos propios
 para las unidades que vengan después. Entran en la misma cola de repaso. Si
-declaras una fórmula o un diagrama, se valida **al guardar**: mejor un error en
-el formulario que una tarjeta que revienta en mitad de un repaso.
+declaras una fórmula, un diagrama o un sistema, se valida **al guardar**: mejor
+un error en el formulario que una tarjeta que revienta en mitad de un repaso.
+El formulario expone la fórmula; el diagrama y el sistema se declaran desde el
+temario o por la API, que es donde se usan.
 
 ## Arquitectura
 
@@ -181,7 +208,10 @@ Tres contenedores, cada uno con una responsabilidad:
   todo lo pide por HTTP a la API. Es el contenedor que se abre en el navegador,
   y por eso se queda con el nombre corto del proyecto.
 - **`lab-algebra-api`** — FastAPI. Aquí viven los motores de lógica, conjuntos,
-  Venn y repetición espaciada, además de la autenticación.
+  ecuaciones, Venn y repetición espaciada, además de la autenticación. Las tres
+  unidades comparten contenedor a propósito: son módulos de cálculo sin estado
+  propio ni dependencias distintas, y un servicio por unidad multiplicaría
+  healthchecks y entradas de red sin separar nada que estuviera junto por error.
 - **`lab-algebra-db`** — PostgreSQL 16. **No publica el 5432 al host**: nada
   fuera de la red necesita hablar con ella, y exponerla sería abrir una
   superficie inútil.
@@ -204,6 +234,7 @@ backend/app/
 ├── services/          ← la lógica de verdad, sin HTTP ni base de datos
 │   ├── logica.py      analizador y tablas de verdad
 │   ├── conjuntos.py   operaciones e inclusión-exclusión
+│   ├── ecuaciones.py  sistemas lineales exactos y su clasificación
 │   ├── venn.py        diagramas en PNG
 │   └── repaso.py      repetición espaciada
 └── seed/              el temario, en Python plano
@@ -251,15 +282,30 @@ es texto en español que puede cambiar sin romper nada.
 | Conjuntos — fundamentos | Conjuntos | 11 | Clase 1 de Conjuntos |
 | Operaciones y álgebra de conjuntos | Conjuntos | 8 | Clase 1 de Conjuntos |
 | Cardinalidad e inclusión-exclusión | Conjuntos | 7 | Clase 2 de Conjuntos 2026 |
-| | | **52** | |
+| Sistemas lineales — fundamentos | Ecuaciones | 7 | Sistemas de ecuaciones 2×2 y 3×3 |
+| Métodos de resolución 2 × 2 | Ecuaciones | 7 | Sistemas 2×2; Sistemas y aplicaciones |
+| Clasificación y sistemas 3 × 3 | Ecuaciones | 7 | Sistemas 2×2, lámina 14; Sistemas 3×3, láminas 4 y 5 |
+| | | **73** | |
 
 Cada tarjeta guarda la lámina exacta de la que sale, de modo que cualquier duda
 se resuelve volviendo al PDF y no discutiendo con la aplicación.
+
+La unidad de ecuaciones cubre lo que se enseñó y **solo** lo que se enseñó: los
+tres métodos, la clasificación, la interpretación geométrica y el Δ de 2 × 2.
+No hay regla de Cramer de orden 3, ni matriz inversa, ni rangos — añadirlos
+desalinearía el material del curso, que es el criterio por el que se decide qué
+entra.
 
 La carga es **idempotente**: se ejecuta en cada arranque, corrige el texto de
 las tarjetas del temario si cambió y **nunca toca una tarjeta creada por el
 usuario**. Corregir una errata solo exige reiniciar el servicio; el progreso de
 estudio no se pierde.
+
+El arranque además **pone el esquema al día** antes de sembrar: `create_all`
+crea las tablas que faltan pero nunca añade una columna a una tabla que ya
+existe, así que actualizar el laboratorio conservando el volumen de datos
+—donde vive tu progreso— moriría en la primera consulta. Las columnas añadidas
+después de la v1.0.0 están declaradas en `app/db.py` y se aplican solas.
 
 ## Desarrollo
 
@@ -306,15 +352,32 @@ instalas algo para resolver una tarea, congélalo en la misma sesión.
 ### Añadir tarjetas al temario
 
 Una tarjeta nueva es una entrada más en el diccionario de
-`backend/app/seed/contenido_logica.py` o `contenido_conjuntos.py`. No hace
-falta tocar nada más: la carga las recoge sola. Los campos obligatorios son
-`concepto`, `pregunta`, `definicion`, `ejercicio_enunciado`,
-`ejercicio_desarrollo`, `ejercicio_respuesta` y `fuente`; los tests fallan si
-falta alguno.
+`backend/app/seed/contenido_logica.py`, `contenido_conjuntos.py` o
+`contenido_ecuaciones.py`. No hace falta tocar nada más: la carga las recoge
+sola. Los campos obligatorios son `concepto`, `pregunta`, `definicion`,
+`ejercicio_enunciado`, `ejercicio_desarrollo`, `ejercicio_respuesta` y
+`fuente`; los tests fallan si falta alguno.
 
-Si la tarjeta lleva `formula`, añade su clasificación esperada al diccionario
-`CLASIFICACIONES_ESPERADAS` de `tests/test_contenido.py` **leyéndola del PDF**,
-no de lo que devuelva el programa. Ese es el sentido de la comprobación.
+Una tarjeta puede además declarar contenido **calculado**, que el laboratorio
+recalcula en vivo al mostrarla:
+
+| Campo | Qué añade | Resultado esperado que hay que escribir |
+|---|---|---|
+| `formula` | La tabla de verdad de la fórmula | `CLASIFICACIONES_ESPERADAS` |
+| `venn` | El diagrama de Venn del enunciado | `REGIONES_DOS_ESPERADAS` y los tests de tres conjuntos |
+| `sistema` | El sistema resuelto paso a paso | `SISTEMAS_ESPERADOS` |
+
+Los tres diccionarios viven en `tests/test_contenido.py` y sus valores se
+**leen del PDF o se resuelven a mano desde la lámina**, nunca se copian de lo
+que devuelve el programa: copiarlos haría que el test se comparara consigo
+mismo. En el caso de `sistema` hay además un test que falla si añades una
+tarjeta sin su resultado esperado, porque una disciplina que depende de
+acordarse no es una disciplina.
+
+Los coeficientes de `sistema` se escriben como entero o como **texto**
+(`"1/2"`, `"-19/2"`), nunca como número con coma: un `0.333` guardado en la
+base ya no se puede volver a leer como el 1/3 que decía el enunciado, y hay un
+test que lo prohíbe.
 
 ## Verificación de resultados
 
@@ -331,8 +394,22 @@ ningún resultado se da por bueno con una sola fuente. Hay tres capas:
 3. **Los valores del PDF**, escritos a mano en `tests/test_contenido.py` y
    contrastados contra lo que calculan los motores.
 
+En la unidad de ecuaciones las tres capas se concretan así: el motor resuelve
+por Gauss-Jordan; los 66 sistemas del banco de ejercicios de la carpeta de
+apuntes —ya verificados con sympy por un camino independiente— se contrastaron
+uno a uno contra él, coincidiendo en clasificación, solución y Δ; y cada
+tarjeta lleva en `SISTEMAS_ESPERADOS` su resultado resuelto a mano desde la
+lámina. Encima de eso, toda solución única se **sustituye en el sistema
+original** y sus residuos tienen que dar cero: es la comprobación que no
+depende de nadie, ni siquiera de la clave impresa en el PDF, que también se
+equivoca.
+
 Además, las funciones de conteo **rechazan regiones negativas**: un enunciado
 mal copiado no puede producir un diagrama imposible con una respuesta creíble.
+Y el motor de ecuaciones **rechaza los coeficientes con coma**: aceptar 0,333
+donde el enunciado dice 1/3 convertiría un sistema compatible indeterminado en
+uno determinado con una solución inventada, porque un pivote que vale
+exactamente cero saldría como 1e−17.
 
 ## Integración continua
 
@@ -348,8 +425,14 @@ mal copiado no puede producir un diagrama imposible con una respuesta creíble.
 | `arranque` | el stack levanta, queda sano y pasa la prueba de humo |
 
 El último job es el que justifica el pipeline: comprueba que el laboratorio
-**inicia sesión, sirve el temario y calcula una tabla de verdad** de punta a
-punta. Un CI que solo lintea da falsa seguridad.
+**inicia sesión, sirve el temario de las tres unidades y calcula** —una tabla
+de verdad, un reparto de Venn y un sistema con fracciones— de punta a punta. Un
+CI que solo lintea da falsa seguridad.
+
+La prueba de humo comprueba también que un sistema con coeficiente `1/2` vuelve
+con `y = 1/2` exacto y que un sistema **incompatible responde 200**: «no tiene
+solución» es una de las tres clasificaciones de la unidad, no un fallo de la
+API, y confundirlo sería un error de dominio disfrazado de error de red.
 
 Los permisos están declarados como `contents: read`; sin ese bloque se hereda
 el default del repositorio, que a veces es `write` global.
@@ -401,6 +484,22 @@ La carga se ejecuta al arrancar: `docker compose restart api`. Si la tarjeta la
 creaste desde la interfaz, la semilla no la toca nunca — edítala desde la
 interfaz.
 
+**Actualicé el laboratorio y la API no arranca, con un error de columna.**
+No debería pasar: el arranque pone el esquema al día antes de sembrar. Si ves
+`UndefinedColumn` o `no such column`, es que se añadió una columna al modelo
+sin declararla en `COLUMNAS_ANADIDAS` de `backend/app/db.py` — añádela ahí y
+reinicia. El log de la API lo dice cuando sí funciona:
+`Columna «tarjetas.sistema» añadida al esquema existente`. Borrar el volumen
+también «arregla» el síntoma, pero se lleva todo el progreso de estudio por
+delante; no es el camino.
+
+**Un sistema con 1/2 me devuelve 0.5 o un error al resolverlo.**
+El motor trabaja sin redondeos y **rechaza los números con coma** a propósito.
+Escribe la fracción (`1/2`, `-19/2`) o el decimal como texto (`0.5`, que
+`Fraction` convierte exactamente a 1/2). Si escribiste `0.333` esperando 1/3,
+el error es correcto: no son el mismo número, y en esta unidad la diferencia
+cambia la clasificación del sistema.
+
 **Elegí un tema y al volver aparece otro.**
 El tema se guarda en `app.storage.user`, que NiceGUI respalda con una cookie
 firmada por `STORAGE_SECRET`. Si esa variable cambia entre arranques, las
@@ -422,6 +521,7 @@ arranque.
 
 ## Licencia y alcance
 
-Material de estudio personal de la asignatura de Álgebra (ST 2026). Los
+Material de estudio personal de la asignatura de Álgebra (ST 2026): lógica
+proposicional, teoría de conjuntos y sistemas de ecuaciones lineales. Los
 enunciados de los ejercicios provienen de las clases y evaluaciones de la
 asignatura y se citan con su lámina de origen.
