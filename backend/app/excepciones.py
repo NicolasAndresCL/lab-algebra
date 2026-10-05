@@ -102,3 +102,18 @@ class SistemaInvalidoError(ErrorLabAlgebra):
     codigo = "sistema_invalido"
     http_status = HTTPStatus.UNPROCESSABLE_ENTITY
     mensaje = "El sistema de ecuaciones no es válido."
+
+
+class MatrizInvalidaError(ErrorLabAlgebra):
+    """La matriz o la operación pedida no se pueden leer.
+
+    Cubre la forma (filas de distinta longitud, más de 4 × 4, una matriz que
+    falta) y los números (un texto ilegible, un flotante). **No** cubre que una
+    operación no esté definida para esos órdenes —sumar un 2 × 3 con un 3 × 2,
+    calcular la traza de una matriz no cuadrada—: eso es una respuesta de la
+    unidad y sale como 200 con `definida: false`.
+    """
+
+    codigo = "matriz_invalida"
+    http_status = HTTPStatus.UNPROCESSABLE_ENTITY
+    mensaje = "La matriz no es válida."
