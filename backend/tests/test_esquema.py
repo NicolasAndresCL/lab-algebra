@@ -42,10 +42,11 @@ def test_la_lista_de_columnas_nuevas_no_esta_vacia() -> None:
 def test_una_base_vieja_recibe_las_columnas_que_le_faltan(tmp_path) -> None:
     motor = _motor_con_esquema_viejo(tmp_path / "vieja.sqlite3")
     try:
-        assert "sistema" not in _columnas(motor, "tarjetas")
+        nuevas = {columna for _, columna, _ in COLUMNAS_ANADIDAS}  # sistema, matriz…
+        assert not nuevas & _columnas(motor, "tarjetas")
         anadidas = asegurar_columnas(motor)
         assert anadidas == [f"{t}.{c}" for t, c, _ in COLUMNAS_ANADIDAS]
-        assert "sistema" in _columnas(motor, "tarjetas")
+        assert nuevas <= _columnas(motor, "tarjetas")
     finally:
         motor.dispose()
 

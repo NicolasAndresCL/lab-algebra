@@ -83,6 +83,7 @@ class TarjetaBase(BaseModel):
     formula: str | None = None
     venn: dict | None = None
     sistema: dict | None = None
+    matriz: dict | None = None
     fuente: str = ""
     orden: int = 0
 
@@ -111,6 +112,7 @@ class TarjetaActualizar(BaseModel):
     formula: str | None = None
     venn: dict | None = None
     sistema: dict | None = None
+    matriz: dict | None = None
     fuente: str | None = None
     orden: int | None = None
 
@@ -221,6 +223,54 @@ class SistemaSalida(BaseModel):
     pasos: list[str]
     interpretacion: str
     respuesta: str
+
+
+# --------------------------------------------------------------------------
+# Matrices y determinantes
+# --------------------------------------------------------------------------
+Numero = int | str
+"""Entero o texto, nunca `float`: la misma regla que en los sistemas."""
+
+
+class MatrizEntrada(BaseModel):
+    """Una operación de la unidad de matrices: `operacion`, A y lo que pida.
+
+    `b`, `k` y `m` son opcionales porque dependen de la operación (la traza
+    solo usa A; la combinación lineal usa A, B, k y m). El catálogo de
+    `GET /herramientas/matrices/operaciones` dice qué usa cada una.
+    """
+
+    operacion: str = Field(min_length=1, max_length=40)
+    a: list[list[Numero]] = Field(min_length=1, max_length=4)
+    b: list[list[Numero]] | None = Field(default=None, min_length=1, max_length=4)
+    k: Numero | None = None
+    m: Numero | None = None
+
+
+class MatrizSalida(BaseModel):
+    operacion: str
+    nombre: str
+    notacion: str
+    definida: bool
+    operandos: dict[str, list[list[str]]]
+    ordenes: dict[str, str]
+    escalares: dict[str, str]
+    resultado: list[list[str]] | None
+    valor: str | None
+    pasos: list[str]
+    tipos: dict[str, list[str]]
+    invertible: bool | None
+    respuesta: str
+
+
+class OperacionMatricesSalida(BaseModel):
+    clave: str
+    nombre: str
+    notacion: str
+    usa_b: bool
+    escalares: list[str]
+    ejemplo: dict
+    fuente: str
 
 
 # --------------------------------------------------------------------------

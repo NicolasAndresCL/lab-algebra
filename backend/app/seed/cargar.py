@@ -21,11 +21,12 @@ from app.modelos import Mazo, Tarjeta, Usuario
 from app.seed.contenido_conjuntos import MAZOS_CONJUNTOS
 from app.seed.contenido_ecuaciones import MAZOS_ECUACIONES
 from app.seed.contenido_logica import MAZOS_LOGICA
+from app.seed.contenido_matrices import MAZOS_MATRICES
 from app.seguridad import hashear_password
 
 logger = logging.getLogger("app.seed")
 
-MAZOS: list[dict] = [*MAZOS_LOGICA, *MAZOS_CONJUNTOS, *MAZOS_ECUACIONES]
+MAZOS: list[dict] = [*MAZOS_LOGICA, *MAZOS_CONJUNTOS, *MAZOS_ECUACIONES, *MAZOS_MATRICES]
 
 CAMPOS_TARJETA = (
     "pregunta",
@@ -38,6 +39,7 @@ CAMPOS_TARJETA = (
     "formula",
     "venn",
     "sistema",
+    "matriz",
     "fuente",
     "orden",
 )

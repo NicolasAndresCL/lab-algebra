@@ -14,7 +14,7 @@ from __future__ import annotations
 import itertools
 
 import pytest
-from sympy import And, Equivalent, Implies, Not, Or, Symbol, Xor
+from sympy import And, Eq, Equivalent, Implies, Not, Or, Rational, Symbol, Xor, solve
 
 from app.seed.cargar import MAZOS
 from app.services import logica
@@ -144,3 +144,48 @@ def test_todas_las_formulas_del_temario_coinciden_con_sympy() -> None:
             if propio != referencia:
                 discrepancias.append((tarjeta["concepto"], formula, propio, referencia))
     assert not discrepancias, f"Discrepancias motor/sympy: {discrepancias}"
+
+
+
+# --------------------------------------------------------------------------
+# Igualdad de matrices (unidad de matrices, láminas 7 y 8)
+# --------------------------------------------------------------------------
+# Estas tarjetas no declaran `matriz`: su respuesta son los valores de unas
+# incógnitas, no el resultado de una operación. Se verifican aquí: sympy
+# resuelve, posición por posición, las ecuaciones transcritas de la lámina, y
+# el conjunto de soluciones tiene que ser exactamente el que dice la tarjeta.
+_w, _x, _y, _z = (Symbol(nombre, real=True) for nombre in "wxyz")
+
+IGUALDADES_DE_MATRICES = {
+    # [−1 2; x³ 0] = [2y + 1 2; 8 0]
+    "Igualdad de matrices": (
+        [Eq(-1, 2 * _y + 1), Eq(_x**3, 8)],
+        (_x, _y),
+        {(2, -1)},
+    ),
+    # [w + 1  10 + x; 3y − 2  x − 4] = [2  2x + 1; y − 5  4z]
+    "Igualdad con varias incógnitas": (
+        [Eq(_w + 1, 2), Eq(10 + _x, 2 * _x + 1), Eq(3 * _y - 2, _y - 5), Eq(_x - 4, 4 * _z)],
+        (_w, _x, _y, _z),
+        {(1, 9, Rational(-3, 2), Rational(5, 4))},
+    ),
+    # [x² − 9x  x; 1  0] = [10  x; 1  y² − 1]
+    "Igualdad con más de una solución": (
+        [Eq(_x**2 - 9 * _x, 10), Eq(0, _y**2 - 1)],
+        (_x, _y),
+        {(10, 1), (10, -1), (-1, 1), (-1, -1)},
+    ),
+}
+
+_CONCEPTOS = {t["concepto"] for mazo in MAZOS for t in mazo["tarjetas"]}
+
+
+@pytest.mark.parametrize("concepto", list(IGUALDADES_DE_MATRICES))
+def test_las_igualdades_de_matrices_coinciden_con_sympy(concepto: str) -> None:
+    assert concepto in _CONCEPTOS, f"no hay ninguna tarjeta «{concepto}»"
+    ecuaciones, incognitas, esperadas = IGUALDADES_DE_MATRICES[concepto]
+    soluciones = {
+        tuple(solucion[v] for v in incognitas)
+        for solucion in solve(ecuaciones, incognitas, dict=True)
+    }
+    assert soluciones == esperadas

@@ -56,12 +56,13 @@ class TestAutenticacion:
 
 
 class TestMazos:
-    def test_lista_los_nueve_mazos_con_sus_conteos(self, autenticado: TestClient) -> None:
-        """Tres unidades × tres mazos: lógica, conjuntos y sistemas de ecuaciones."""
+    def test_lista_los_trece_mazos_con_sus_conteos(self, autenticado: TestClient) -> None:
+        """Tres mazos por unidad en lógica, conjuntos y ecuaciones, y cuatro en matrices."""
         mazos = autenticado.get("/api/v1/mazos").json()
-        assert len(mazos) == 9
+        assert len(mazos) == 13
         assert all(m["total_tarjetas"] > 0 for m in mazos)
-        assert sum(m["total_tarjetas"] for m in mazos) >= 70
+        assert sum(m["total_tarjetas"] for m in mazos) >= 110
+        assert sum(m["unidad"] == "Matrices" for m in mazos) == 4
 
     def test_tarjetas_de_un_mazo_vienen_ordenadas(self, autenticado: TestClient) -> None:
         mazo = autenticado.get("/api/v1/mazos").json()[0]
@@ -138,6 +139,38 @@ class TestCrearTarjetas:
         respuesta = autenticado.post("/api/v1/tarjetas", json=datos)
         assert respuesta.status_code == 422
         assert respuesta.json()["error"]["codigo"] == "datos_venn_invalidos"
+
+    def test_una_matriz_mal_formada_se_rechaza_al_guardar(
+        self, autenticado: TestClient
+    ) -> None:
+        datos = self._datos(self._mazo_id(autenticado), "Con matriz rota")
+        datos["matriz"] = {"operacion": "suma", "a": [[1, 2], [3]], "b": [[1, 2], [3, 4]]}
+        respuesta = autenticado.post("/api/v1/tarjetas", json=datos)
+        assert respuesta.status_code == 422
+        assert respuesta.json()["error"]["codigo"] == "matriz_invalida"
+
+    def test_una_tarjeta_con_matriz_se_guarda_y_la_conserva(
+        self, autenticado: TestClient
+    ) -> None:
+        datos = self._datos(self._mazo_id(autenticado), "Con matriz")
+        datos["matriz"] = {"operacion": "traza", "a": [[2, 5], [1, 3]]}
+        respuesta = autenticado.post("/api/v1/tarjetas", json=datos)
+        assert respuesta.status_code == 201
+        assert respuesta.json()["matriz"] == datos["matriz"]
+
+    def test_editar_valida_tambien_los_campos_calculados(
+        self, autenticado: TestClient
+    ) -> None:
+        """El PATCH pasa por el mismo registro de validadores que el alta."""
+        creada = autenticado.post(
+            "/api/v1/tarjetas", json=self._datos(self._mazo_id(autenticado), "Editable 2")
+        ).json()
+        respuesta = autenticado.patch(
+            f"/api/v1/tarjetas/{creada['id']}",
+            json={"matriz": {"operacion": "potencia", "a": [[1]]}},
+        )
+        assert respuesta.status_code == 422
+        assert respuesta.json()["error"]["codigo"] == "matriz_invalida"
 
     def test_las_tarjetas_del_temario_no_se_borran(self, autenticado: TestClient) -> None:
         mazo_id = self._mazo_id(autenticado)
@@ -288,6 +321,73 @@ class TestHerramientas:
         )
         assert respuesta.status_code == 422
         assert respuesta.json()["error"]["codigo"] == "sistema_invalido"
+
+    def test_sistema_por_cramer(self, autenticado: TestClient) -> None:
+        """Lámina 46: 3x − 2y = 4 ; 6x + y = 13."""
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/ecuaciones",
+            json={"matriz": [[3, -2, 4], [6, 1, 13]], "metodo": "Cramer"},
+        )
+        cuerpo = respuesta.json()
+        assert cuerpo["metodo"] == "Cramer"
+        assert cuerpo["valores"] == {"x": "2", "y": "1"}
+        assert any(paso.startswith("Dₓ = ") for paso in cuerpo["pasos"])
+
+    def test_catalogo_de_operaciones_con_matrices(self, autenticado: TestClient) -> None:
+        """La interfaz se construye desde aquí: cada operación trae su ejemplo."""
+        catalogo = autenticado.get("/api/v1/herramientas/matrices/operaciones").json()
+        claves = [op["clave"] for op in catalogo]
+        assert {"suma", "producto", "traspuesta", "traza", "determinante"} <= set(claves)
+        assert all(op["ejemplo"].get("a") for op in catalogo)
+        assert all("lámina" in op["fuente"] for op in catalogo)
+
+    def test_producto_de_matrices_con_desarrollo(self, autenticado: TestClient) -> None:
+        """Lámina 30, con la respuesta impresa en la propia lámina."""
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/matrices",
+            json={
+                "operacion": "producto",
+                "a": [[2, 1, 5], [3, 0, 4]],
+                "b": [[-1, 7, 8], [4, 6, 0], [5, 7, 3]],
+            },
+        )
+        assert respuesta.status_code == 200
+        cuerpo = respuesta.json()
+        assert cuerpo["definida"] is True
+        assert cuerpo["resultado"] == [["27", "55", "31"], ["17", "49", "36"]]
+        assert cuerpo["ordenes"] == {"A": "2 × 3", "B": "3 × 3"}
+        assert "c₁₁ = 2·(−1) + 1·4 + 5·5 = 27" in cuerpo["pasos"]
+
+    def test_un_producto_no_definido_no_es_un_error(self, autenticado: TestClient) -> None:
+        """Saber cuándo NO se puede multiplicar es temario: 200, no 422."""
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/matrices",
+            json={"operacion": "producto", "a": [[1, 2, 3]], "b": [[1, 2, 3]]},
+        )
+        assert respuesta.status_code == 200
+        cuerpo = respuesta.json()
+        assert cuerpo["definida"] is False
+        assert cuerpo["resultado"] is None
+        assert "columnas de A (3)" in cuerpo["pasos"][0]
+
+    def test_determinante_con_fracciones_e_invertibilidad(
+        self, autenticado: TestClient
+    ) -> None:
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/matrices",
+            json={"operacion": "determinante", "a": [["1/2", 1], [3, "-1/3"]]},
+        )
+        cuerpo = respuesta.json()
+        assert cuerpo["valor"] == "−19/6"
+        assert cuerpo["invertible"] is True
+
+    def test_filas_desiguales_dan_422(self, autenticado: TestClient) -> None:
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/matrices",
+            json={"operacion": "traspuesta", "a": [[1, 2], [3]]},
+        )
+        assert respuesta.status_code == 422
+        assert respuesta.json()["error"]["codigo"] == "matriz_invalida"
 
 
 class TestContratoDeError:

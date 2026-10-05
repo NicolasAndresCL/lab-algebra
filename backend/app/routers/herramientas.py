@@ -1,4 +1,4 @@
-"""Herramientas de cálculo: lógica, conjuntos, Venn y sistemas de ecuaciones.
+"""Herramientas de cálculo: lógica, conjuntos, Venn, ecuaciones y matrices.
 
 Son las que convierten la aplicación en un laboratorio y no en un montón de
 texto: el estudiante escribe su propia fórmula o su propio enunciado y ve el
@@ -14,8 +14,11 @@ from app.esquemas import (
     EquivalenciaEntrada,
     EquivalenciaSalida,
     FormulaEntrada,
+    MatrizEntrada,
+    MatrizSalida,
     OperacionConjuntosEntrada,
     OperacionConjuntosSalida,
+    OperacionMatricesSalida,
     RegionesSalida,
     SistemaEntrada,
     SistemaSalida,
@@ -23,7 +26,7 @@ from app.esquemas import (
     VennEntrada,
 )
 from app.services import conjuntos as svc_conjuntos
-from app.services import ecuaciones, logica, venn
+from app.services import ecuaciones, logica, matrices, venn
 
 router = APIRouter(prefix="/herramientas", tags=["herramientas"])
 
@@ -129,3 +132,37 @@ def resolver_sistema(datos: SistemaEntrada, _: UsuarioDep) -> SistemaSalida:
     """
     solucion = ecuaciones.resolver_datos(datos.matriz, datos.incognitas, datos.metodo)
     return SistemaSalida(**solucion.como_dict())
+
+
+@router.get(
+    "/matrices/operaciones",
+    response_model=list[OperacionMatricesSalida],
+    summary="Catálogo de operaciones con matrices",
+)
+def operaciones_matrices(_: UsuarioDep) -> list[OperacionMatricesSalida]:
+    """Qué operaciones hay, qué operandos usa cada una y su ejemplo de la lámina.
+
+    La interfaz construye su formulario a partir de esta lista: una operación
+    nueva en `matrices.OPERACIONES` aparece en pantalla sin tocar el frontend.
+    """
+    return [
+        OperacionMatricesSalida(**operacion.como_dict())
+        for operacion in matrices.OPERACIONES.values()
+    ]
+
+
+@router.post(
+    "/matrices",
+    response_model=MatrizSalida,
+    summary="Operar con matrices: suma, producto, traspuesta, traza, determinante…",
+)
+def operar_matrices(datos: MatrizEntrada, _: UsuarioDep) -> MatrizSalida:
+    """Calcula con aritmética exacta y devuelve el desarrollo paso a paso.
+
+    Una operación **no definida** para esos órdenes (sumar un 2 × 3 con un
+    3 × 2) no es un error: sale con 200, `definida: false` y el motivo. El 422
+    queda para lo que está mal escrito (filas de distinta longitud, un número
+    ilegible, una operación que no existe).
+    """
+    resultado = matrices.operar(datos.operacion, datos.a, datos.b, datos.k, datos.m)
+    return MatrizSalida(**resultado.como_dict())

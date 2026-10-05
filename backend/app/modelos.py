@@ -99,6 +99,10 @@ class Tarjeta(Base):
     # Si está, la tarjeta muestra el sistema resuelto paso a paso por el motor
     # de `services/ecuaciones.py`, con aritmética exacta.
     sistema: Mapped[dict | None] = mapped_column(SAJson, nullable=True)
+    # Operación de matrices opcional: `{"operacion": "producto", "a": [[…]],
+    # "b": [[…]], "k": …}`. Si está, la tarjeta muestra la operación resuelta
+    # paso a paso por `services/matrices.py`, también con aritmética exacta.
+    matriz: Mapped[dict | None] = mapped_column(SAJson, nullable=True)
 
     fuente: Mapped[str] = mapped_column(String(180), default="")
     es_semilla: Mapped[bool] = mapped_column(Boolean, default=False)

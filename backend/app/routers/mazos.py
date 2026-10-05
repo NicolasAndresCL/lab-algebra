@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 from fastapi import APIRouter, Query, Response, status
 from sqlalchemy import func, select
 
@@ -15,7 +18,7 @@ from app.esquemas import (
 )
 from app.excepciones import RecursoDuplicadoError, RecursoNoEncontradoError
 from app.modelos import Mazo, Tarjeta
-from app.services import ecuaciones, logica, venn
+from app.services import ecuaciones, logica, matrices, venn
 
 router = APIRouter(prefix="/mazos", tags=["mazos"])
 router_tarjetas = APIRouter(prefix="/tarjetas", tags=["tarjetas"])
@@ -35,26 +38,28 @@ def _obtener_tarjeta(sesion: SesionDep, tarjeta_id: int) -> Tarjeta:
     return tarjeta
 
 
-def _validar_contenido_calculado(
-    formula: str | None,
-    especificacion: dict | None,
-    sistema: dict | None = None,
-) -> None:
-    """Rechaza una fórmula, un diagrama o un sistema que no se pueden calcular.
+# Qué motor valida cada campo calculado de una tarjeta. Un campo nuevo es una
+# entrada más aquí, no un parámetro más en cada llamada. Cada motor lanza su
+# propia excepción de dominio, que el manejador global convierte en un 422.
+VALIDADORES: dict[str, Callable[[Any], object]] = {
+    "formula": logica.construir_tabla,
+    "venn": venn.generar_png,
+    "sistema": lambda s: ecuaciones.resolver_datos(
+        s.get("matriz"), s.get("incognitas"), s.get("metodo")
+    ),
+    "matriz": matrices.operar_datos,
+}
+
+
+def _validar_contenido_calculado(campos: dict[str, Any]) -> None:
+    """Rechaza una fórmula, un diagrama, un sistema o una matriz que no se calculan.
 
     Se comprueba **al guardar**, no al mostrar: si no, la tarjeta se crea sin
     problema y revienta después, en mitad de un repaso.
     """
-    if formula:
-        logica.construir_tabla(formula)
-    if especificacion:
-        venn.generar_png(especificacion)
-    if sistema:
-        ecuaciones.resolver_datos(
-            sistema.get("matriz"),
-            sistema.get("incognitas"),
-            sistema.get("metodo"),
-        )
+    for campo, validar in VALIDADORES.items():
+        if campos.get(campo):
+            validar(campos[campo])
 
 
 # --------------------------------------------------------------------------
@@ -146,7 +151,7 @@ def crear_tarjeta(datos: TarjetaCrear, sesion: SesionDep, _: UsuarioDep) -> Tarj
         raise RecursoDuplicadoError(
             f"El mazo ya tiene una tarjeta para el concepto «{datos.concepto}»."
         )
-    _validar_contenido_calculado(datos.formula, datos.venn, datos.sistema)
+    _validar_contenido_calculado(datos.model_dump())
 
     tarjeta = Tarjeta(**datos.model_dump(), es_semilla=False)
     sesion.add(tarjeta)
@@ -164,9 +169,7 @@ def editar_tarjeta(
     tarjeta = _obtener_tarjeta(sesion, tarjeta_id)
     cambios = datos.model_dump(exclude_unset=True)
     _validar_contenido_calculado(
-        cambios.get("formula", tarjeta.formula),
-        cambios.get("venn", tarjeta.venn),
-        cambios.get("sistema", tarjeta.sistema),
+        {campo: cambios.get(campo, getattr(tarjeta, campo)) for campo in VALIDADORES}
     )
     for campo, valor in cambios.items():
         setattr(tarjeta, campo, valor)

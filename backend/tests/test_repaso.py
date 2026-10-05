@@ -124,7 +124,12 @@ class TestFlujoDeEstudio:
         autenticado.post(
             f"/api/v1/estudio/tarjetas/{tarjeta['id']}/calificar", json={"calidad": 1}
         )
-        cola = autenticado.get("/api/v1/estudio/cola", params={"limite": 100}).json()
+        # Se filtra por su mazo: la cola pone las nunca vistas antes que las
+        # vencidas, y con el temario completo (114 tarjetas desde la v1.2.0) la
+        # fallada ya no cabe entre las 100 primeras de la cola global.
+        cola = autenticado.get(
+            "/api/v1/estudio/cola", params={"limite": 100, "mazo_id": tarjeta["mazo_id"]}
+        ).json()
         assert tarjeta["id"] in [t["id"] for t in cola]
 
     def test_calificar_una_tarjeta_inexistente_da_404(self, autenticado: TestClient) -> None:

@@ -65,6 +65,8 @@ def obtener_sesion() -> Iterator[Session]:
 COLUMNAS_ANADIDAS: tuple[tuple[str, str, str], ...] = (
     # Unidad de sistemas de ecuaciones (v1.1.0).
     ("tarjetas", "sistema", "JSON"),
+    # Unidad de matrices y determinantes (v1.2.0).
+    ("tarjetas", "matriz", "JSON"),
 )
 
 
