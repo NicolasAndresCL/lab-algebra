@@ -101,13 +101,18 @@ class TestValidacion:
             Sistema.desde_datos([[0, 0, 0], [0, 0, 0]])
 
     def test_un_metodo_inventado_se_rechaza(self) -> None:
+        # Hasta la v1.1.0 este ejemplo era «cramer»; desde la unidad de
+        # matrices, Cramer es un método del curso (solo en 2 × 2).
         with pytest.raises(SistemaInvalidoError) as error:
-            resolver_datos([[1, 1, 3], [1, 2, -8]], metodo="cramer")
+            resolver_datos([[1, 1, 3], [1, 2, -8]], metodo="Gauss-Seidel")
         assert "sustitución" in str(error.value)
+        assert "Cramer" in str(error.value)
 
-    def test_en_3x3_solo_se_desarrolla_por_reduccion(self) -> None:
-        with pytest.raises(SistemaInvalidoError):
-            resolver_datos([[1, 1, 1, 3], [1, 2, 1, 4], [1, 1, 2, 5]], metodo="igualación")
+    @pytest.mark.parametrize("metodo", ["igualación", "Cramer"])
+    def test_en_3x3_solo_se_desarrolla_por_reduccion(self, metodo: str) -> None:
+        """Cramer de orden 3 no se enseñó: el PDF solo lo da para 2 × 2."""
+        with pytest.raises(SistemaInvalidoError, match="Cramer quedan para"):
+            resolver_datos([[1, 1, 1, 3], [1, 2, 1, 4], [1, 1, 2, 5]], metodo=metodo)
 
     def test_el_determinante_es_cosa_de_los_2x2(self) -> None:
         sistema = Sistema.desde_datos([[1, 1, 1, 3], [1, 2, 1, 4], [1, 1, 2, 5]])

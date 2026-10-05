@@ -18,10 +18,15 @@ Dos decisiones que no se pueden relajar:
   estudio, no una calculadora: una respuesta sin el camino no sirve para
   aprender a resolver el siguiente.
 
-Lo que este módulo **no** hace, a propósito: regla de Cramer de orden 3,
-matriz inversa y rangos. No se enseñaron en clase, y meterlos desalinearía el
-laboratorio del curso. El único determinante que aparece es el Δ de 2 × 2,
-porque el propio libro lo pide en cada ejercicio.
+Desde la unidad de matrices (v1.2.0) hay un cuarto método, la **regla de
+Cramer**, pero solo para 2 × 2: es como la enseñan las láminas 44 a 47 de
+«Matrices y determinantes». Igual que los otros tres, Cramer **narra**; la
+clasificación sigue saliendo de Gauss-Jordan.
+
+Lo que este módulo **no** hace, a propósito: Cramer de orden 3, matriz
+inversa y rangos. No se enseñaron en clase, y meterlos desalinearía el
+laboratorio del curso. Los determinantes de matrices sueltas viven en
+`matrices.py`; aquí solo aparecen el Δ de 2 × 2 y los Dₓ, D_y de Cramer.
 """
 
 from __future__ import annotations
@@ -31,6 +36,8 @@ from fractions import Fraction
 from typing import Literal
 
 from app.excepciones import SistemaInvalidoError
+from app.services import numeros
+from app.services.numeros import MENOS, Coeficiente, formatear
 
 Clasificacion = Literal[
     "compatible determinado",
@@ -38,56 +45,17 @@ Clasificacion = Literal[
     "incompatible",
 ]
 
-# Menos tipográfico U+2212. `str(Fraction(-3))` devuelve el guion ASCII, que
-# junto al resto del texto mezcla dos rayas de distinta longitud y se nota a
-# simple vista. Todo número que salga de aquí pasa por `formatear`.
-MENOS = "−"
-
-METODOS: tuple[str, ...] = ("reducción", "sustitución", "igualación")
+METODOS: tuple[str, ...] = ("reducción", "sustitución", "igualación", "Cramer")
 METODO_POR_DEFECTO = "reducción"
 NOMBRES_POR_DEFECTO = ("x", "y", "z")
 ORDENES_ADMITIDOS = (2, 3)
 
-Coeficiente = int | str | Fraction
-
-
 # --------------------------------------------------------------------------
-# Números exactos
+# Números exactos (la implementación vive en `numeros.py`)
 # --------------------------------------------------------------------------
 def a_fraccion(valor: Coeficiente) -> Fraction:
-    """Convierte un coeficiente del enunciado en una fracción exacta.
-
-    Admite enteros, fracciones y texto («3», «−1/2», «0.5»). **Rechaza los
-    flotantes** a propósito: aceptarlos invitaría a escribir 0.333 donde el
-    enunciado dice 1/3, y la unidad entera se apoya en distinguir un pivote que
-    vale cero de uno que casi vale cero.
-    """
-    if isinstance(valor, Fraction):
-        return valor
-    if isinstance(valor, bool):  # bool es subclase de int; no es un coeficiente
-        raise SistemaInvalidoError(f"«{valor}» no es un coeficiente válido.")
-    if isinstance(valor, int):
-        return Fraction(valor)
-    if isinstance(valor, float):
-        raise SistemaInvalidoError(
-            f"«{valor}» es un número con coma. Escribe la fracción exacta "
-            f"(1/3, no 0.333): el laboratorio trabaja sin redondeos."
-        )
-    texto = str(valor).strip().replace(MENOS, "-").replace(" ", "")
-    if not texto:
-        return Fraction(0)
-    try:
-        return Fraction(texto)
-    except (ValueError, ZeroDivisionError):
-        raise SistemaInvalidoError(
-            f"«{valor}» no es un número que se pueda leer. Usa enteros o "
-            f"fracciones como 3, −2 o 1/2."
-        )
-
-
-def formatear(valor: Fraction) -> str:
-    """El número tal como se escribe en el cuaderno: «3», «−1/2», «9/2»."""
-    return str(valor).replace("-", MENOS)
+    """`numeros.a_fraccion` con la excepción de esta unidad: `SistemaInvalidoError`."""
+    return numeros.a_fraccion(valor, SistemaInvalidoError)
 
 
 def _coeficiente_escrito(valor: Fraction, nombre: str) -> str:
@@ -559,6 +527,68 @@ def _pasos_igualacion(sistema: Sistema, clasificacion: str) -> list[str]:
     return pasos
 
 
+def _determinante_escrito(nombre: str, a: Fraction, b: Fraction,
+                          c: Fraction, d: Fraction) -> str:
+    """«Dₓ = |4 −2; 13 1| = (4)(1) − (−2)(13) = 30», como en la lámina 45."""
+    valor = a * d - b * c
+    return (
+        f"{nombre} = |{formatear(a)} {formatear(b)}; {formatear(c)} {formatear(d)}| = "
+        f"({formatear(a)})({formatear(d)}) − ({formatear(b)})({formatear(c)}) = "
+        f"{formatear(valor)}"
+    )
+
+
+def _pasos_cramer(sistema: Sistema, clasificacion: str, delta: Fraction) -> list[str]:
+    """Regla de Cramer de 2 × 2: x = Dₓ / D, y = D_y / D, siempre que D ≠ 0.
+
+    Dₓ se forma cambiando la columna de x por la de los términos
+    independientes, y D_y cambiando la de y. Con D = 0 la regla **no es
+    aplicable** —dividiría entre cero— y así se dice; el resultado lo da
+    entonces la clasificación por eliminación, que es la que manda siempre.
+    """
+    (a, b, s), (c, d, t) = sistema.matriz
+    x, y = sistema.incognitas
+    delta_x = s * d - b * t
+    delta_y = a * t - s * c
+    pasos = [
+        f"(1)  {sistema.ecuacion_texto(sistema.matriz[0])}",
+        f"(2)  {sistema.ecuacion_texto(sistema.matriz[1])}",
+        _determinante_escrito("D", a, b, c, d),
+        f"Para D{_sub(x)} cambio la columna de {x} por los términos independientes; "
+        f"para D{_sub(y)}, la de {y}.",
+        _determinante_escrito(f"D{_sub(x)}", s, b, t, d),
+        _determinante_escrito(f"D{_sub(y)}", a, s, c, t),
+    ]
+    if clasificacion == "compatible determinado":
+        return [
+            *pasos,
+            f"{x} = D{_sub(x)} / D = {_division(delta_x, delta)} = "
+            f"{formatear(delta_x / delta)}.",
+            f"{y} = D{_sub(y)} / D = {_division(delta_y, delta)} = "
+            f"{formatear(delta_y / delta)}.",
+        ]
+    lectura = (
+        "D = 0 y algún numerador no es 0: las ecuaciones se contradicen."
+        if clasificacion == "incompatible"
+        else "D = 0 y los dos numeradores también: las ecuaciones son dependientes."
+    )
+    return [
+        *pasos,
+        "D = 0: la regla de Cramer no es aplicable, porque habría que dividir entre "
+        "cero. No hay solución única.",
+        lectura,
+    ]
+
+
+# Subíndices para nombrar Dₓ, D_y. Unicode no tiene subíndice para todas las
+# letras (no hay «y» ni «z» subíndice), así que las que faltan van con guion bajo.
+_SUBINDICES = {"x": "ₓ", "a": "ₐ", "e": "ₑ", "o": "ₒ"}
+
+
+def _sub(nombre: str) -> str:
+    return _SUBINDICES.get(nombre, f"_{nombre}")
+
+
 # --------------------------------------------------------------------------
 # Punto de entrada
 # --------------------------------------------------------------------------
@@ -579,8 +609,8 @@ def resolver(sistema: Sistema, metodo: str | None = None) -> Solucion:
     if sistema.orden == 3 and elegido != "reducción":
         raise SistemaInvalidoError(
             "En 3 × 3 el laboratorio desarrolla por reducción, que es el método "
-            "sistemático (eliminación de Gauss-Jordan). Sustitución e igualación "
-            "quedan para los sistemas de 2 × 2."
+            "sistemático (eliminación de Gauss-Jordan). Sustitución, igualación y "
+            "Cramer quedan para los sistemas de 2 × 2: así los enseña el curso."
         )
 
     orden = sistema.orden
@@ -619,6 +649,7 @@ def resolver(sistema: Sistema, metodo: str | None = None) -> Solucion:
             "reducción": lambda: _pasos_reduccion(sistema, clasificacion, delta),
             "sustitución": lambda: _pasos_sustitucion(sistema, clasificacion),
             "igualación": lambda: _pasos_igualacion(sistema, clasificacion),
+            "Cramer": lambda: _pasos_cramer(sistema, clasificacion, delta),
         }[elegido]
         pasos = generador()
     else:
