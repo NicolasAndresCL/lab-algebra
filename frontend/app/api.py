@@ -196,6 +196,24 @@ def resolver_sistema(
     return _peticion("POST", "/herramientas/ecuaciones", sesion=sesion, json=cuerpo)
 
 
+def operaciones_matrices(sesion: Sesion) -> list[dict]:
+    """Catálogo de operaciones con matrices, con el ejemplo de la lámina de cada una.
+
+    La pestaña de matrices se construye desde aquí: qué operandos pide cada
+    operación lo decide el backend, no una lista copiada en el frontend.
+    """
+    return _peticion("GET", "/herramientas/matrices/operaciones", sesion=sesion)
+
+
+def operar_matrices(sesion: Sesion, datos: dict) -> dict:
+    """Calcula una operación con matrices: `{"operacion", "a", "b"?, "k"?, "m"?}`.
+
+    Como en los sistemas, las entradas viajan como texto para que «1/3» no
+    pase por un flotante.
+    """
+    return _peticion("POST", "/herramientas/matrices", sesion=sesion, json=datos)
+
+
 def regiones_venn(sesion: Sesion, especificacion: dict) -> dict:
     return _peticion(
         "POST", "/herramientas/venn/regiones", sesion=sesion, json=especificacion

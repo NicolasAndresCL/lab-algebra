@@ -12,13 +12,19 @@ la tarjeta tiene que saber cuál es.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
+
 from nicegui import ui
 
 from app.api import ErrorApi, Sesion
+from app.api import operar_matrices as pedir_matriz
 from app.api import resolver_sistema as pedir_sistema
 from app.api import tabla_de_verdad as pedir_tabla
 from app.componentes import (
     diagrama_venn,
+    matriz_resuelta,
     parrafo_multilinea,
     sistema_resuelto,
     tabla_de_verdad,
@@ -62,22 +68,11 @@ def reverso(sesion: Sesion, tarjeta: dict, tema: Tema) -> None:
             with ui.column().classes("gap-0 flex-1"):
                 parrafo_multilinea(tarjeta["ejercicio_respuesta"], "font-medium")
 
-        if tarjeta.get("formula"):
-            ui.separator().classes("lab-borde")
-            ui.label(f"Tabla de verdad de {tarjeta['formula']}").classes(
-                "text-sm font-semibold"
-            )
-            _tabla(sesion, tarjeta["formula"])
-
-        if tarjeta.get("venn"):
-            ui.separator().classes("lab-borde")
-            ui.label("Diagrama de Venn").classes("text-sm font-semibold")
-            diagrama_venn(sesion, tarjeta["venn"], tema)
-
-        if tarjeta.get("sistema"):
-            ui.separator().classes("lab-borde")
-            ui.label("El sistema, resuelto por el motor").classes("text-sm font-semibold")
-            _sistema(sesion, tarjeta["sistema"])
+        for extra in EXTRAS:
+            if tarjeta.get(extra.campo):
+                ui.separator().classes("lab-borde")
+                ui.label(extra.titulo(tarjeta)).classes("text-sm font-semibold")
+                extra.pintar(sesion, tarjeta[extra.campo], tema)
 
         if tarjeta.get("fuente"):
             ui.label(f"Fuente: {tarjeta['fuente']}").classes("text-xs lab-tenue mt-2")
@@ -110,6 +105,40 @@ def _sistema(sesion: Sesion, declarado: dict) -> None:
         ui.label(f"No se pudo resolver el sistema: {error}").classes(
             "text-negative text-sm"
         )
+
+
+def _matriz(sesion: Sesion, declarada: dict) -> None:
+    """La operación de la tarjeta, recalculada en vivo: misma idea que `_sistema`."""
+    try:
+        matriz_resuelta(pedir_matriz(sesion, declarada))
+    except ErrorApi as error:
+        ui.label(f"No se pudo calcular la operación: {error}").classes(
+            "text-negative text-sm"
+        )
+
+
+@dataclass(frozen=True)
+class Extra:
+    """Un bloque calculado del reverso: qué campo lo activa, su título y quién lo pinta."""
+
+    campo: str
+    titulo: Callable[[dict], str]
+    pintar: Callable[[Sesion, Any, Tema], None]
+
+
+# Los bloques que el motor calcula en vivo, en el orden en que se muestran. Un
+# campo calculado nuevo en las tarjetas es una entrada más aquí, no otro `if`
+# en `reverso`. Cada uno es la segunda mitad de la doble verificación: el
+# desarrollo escrito a mano está arriba, y el del motor debajo.
+EXTRAS: tuple[Extra, ...] = (
+    Extra("formula", lambda t: f"Tabla de verdad de {t['formula']}",
+          lambda sesion, formula, _: _tabla(sesion, formula)),
+    Extra("venn", lambda _: "Diagrama de Venn", diagrama_venn),
+    Extra("sistema", lambda _: "El sistema, resuelto por el motor",
+          lambda sesion, sistema, _: _sistema(sesion, sistema)),
+    Extra("matriz", lambda _: "La operación, resuelta por el motor",
+          lambda sesion, matriz, _: _matriz(sesion, matriz)),
+)
 
 
 def panel_tarjeta(sesion: Sesion, tarjeta: dict, tema: Tema) -> None:

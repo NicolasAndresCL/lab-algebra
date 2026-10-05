@@ -275,6 +275,20 @@ body {
 .lab-tabla .q-table tbody tr:nth-child(even) { background: var(--lab-superficie-alta); }
 .lab-tabla .q-table--bordered { border-color: var(--lab-borde); }
 
+/* Una matriz como se escribe en el cuaderno: rejilla de números alineados a
+   la derecha entre dos bordes laterales redondeados, que hacen de paréntesis.
+   El número de columnas lo fija `grid-template-columns` en línea, porque
+   depende de cada matriz. */
+.lab-matriz {
+    display: inline-grid;
+    gap: .15rem 1rem;
+    padding: .2rem .6rem;
+    border-left: 2px solid var(--lab-texto-tenue);
+    border-right: 2px solid var(--lab-texto-tenue);
+    border-radius: .5rem;
+}
+.lab-matriz > * { text-align: right; }
+
 /* La muestra de color del selector de tema. `display: block` no es opcional:
    un <span> es inline y descarta width y height, así que la muestra salía
    como una rayita de un píxel. */

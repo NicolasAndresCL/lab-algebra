@@ -191,6 +191,80 @@ def sistema_resuelto(datos: dict) -> None:
                 ui.label(datos["interpretacion"]).classes("text-sm flex-1 lab-tenue")
 
 
+def matriz_visual(filas: list[list[str]], nombre: str = "") -> None:
+    """Una matriz entre paréntesis, con las columnas alineadas a la derecha.
+
+    Una tabla de Quasar no sirve aquí: trae cabeceras, bordes de celda y
+    paginación, y lo que se quiere es la matriz tal como se escribe a mano.
+    """
+    with ui.row().classes("items-center gap-2 no-wrap"):
+        if nombre:
+            ui.label(f"{nombre} =").classes("font-mono text-sm")
+        columnas = len(filas[0]) if filas else 1
+        with (
+            ui.element("div")
+            .classes("lab-matriz font-mono text-sm")
+            .style(f"grid-template-columns: repeat({columnas}, auto)")
+        ):
+            for fila in filas:
+                for valor in fila:
+                    ui.label(valor)
+
+
+def matriz_resuelta(datos: dict) -> None:
+    """Dibuja una operación con matrices ya calculada por el backend.
+
+    Mismo orden que `sistema_resuelto`: operandos, desarrollo y, al final, la
+    respuesta. Una operación **no definida** se pinta como respuesta, no como
+    error: saber cuándo no se puede operar es parte del temario.
+    """
+    with ui.column().classes("w-full gap-2"):
+        with ui.row().classes("items-center gap-2 flex-wrap"):
+            ui.badge(datos["nombre"].upper()).props(
+                f"color={'primary' if datos['definida'] else 'negative'}"
+            )
+            ui.label(datos["notacion"]).classes("font-mono text-sm")
+            if datos.get("invertible") is not None:
+                ui.badge(
+                    "ADMITE INVERSA" if datos["invertible"] else "SINGULAR"
+                ).props(f"color={'positive' if datos['invertible'] else 'warning'}")
+
+        with ui.row().classes("w-full gap-6 flex-wrap items-center"):
+            for nombre, filas in datos["operandos"].items():
+                with ui.column().classes("gap-1"):
+                    matriz_visual(filas, nombre)
+                    ui.label(_tipos_en_texto(datos, nombre)).classes("text-xs lab-tenue")
+            for nombre, valor in datos.get("escalares", {}).items():
+                ui.label(f"{nombre} = {valor}").classes("font-mono text-sm")
+
+        with (
+            ui.expansion("Desarrollo paso a paso", icon="functions", value=True).classes(
+                "w-full lab-superficie"
+            ),
+            ui.column().classes("w-full gap-1 p-2"),
+        ):
+            for paso in datos["pasos"]:
+                ui.label(paso).classes("font-mono text-sm leading-relaxed")
+
+        with ui.row().classes("items-center gap-3 w-full flex-wrap"):
+            icono, color = (
+                ("check_circle", "text-positive") if datos["definida"]
+                else ("block", "text-negative")
+            )
+            ui.icon(icono, size="20px").classes(f"{color}")
+            if datos.get("resultado") is not None:
+                matriz_visual(datos["resultado"], datos["notacion"])
+            else:
+                ui.label(datos["respuesta"]).classes("font-medium flex-1")
+
+
+def _tipos_en_texto(datos: dict, nombre: str) -> str:
+    """«2 × 3 · simétrica, cuadrada», o solo el orden si no es de ningún tipo."""
+    tipos = datos.get("tipos", {}).get(nombre) or []
+    orden = datos.get("ordenes", {}).get(nombre, "")
+    return " · ".join(filter(None, [orden, ", ".join(tipos)]))
+
+
 def diagrama_venn(sesion: Sesion, especificacion: dict, tema: Tema) -> None:
     """Descarga y muestra el diagrama; si falla, lo dice en vez de dejar un hueco.
 

@@ -1,6 +1,10 @@
-"""Laboratorio de cálculo: lógica, conjuntos, Venn y sistemas de ecuaciones."""
+"""Laboratorio de cálculo: lógica, conjuntos, Venn, ecuaciones y matrices."""
 
 from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from itertools import product
 
 from nicegui import ui
 
@@ -9,15 +13,48 @@ from app.api import (
     Sesion,
     equivalencia,
     imagen_venn,
+    operaciones_matrices,
     operar_conjuntos,
+    operar_matrices,
     regiones_venn,
     resolver_sistema,
     tabla_de_verdad,
 )
-from app.componentes import cabecera, campo_formula, sistema_resuelto, titulo_pagina
+from app.componentes import (
+    cabecera,
+    campo_formula,
+    matriz_resuelta,
+    sistema_resuelto,
+    titulo_pagina,
+)
 from app.componentes import tabla_de_verdad as pintar_tabla
 from app.estado import exigir_sesion
 from app.temas import Tema
+
+
+@dataclass(frozen=True)
+class Pestana:
+    """Una herramienta: su clave, cómo se rotula y quién pinta su panel."""
+
+    clave: str
+    etiqueta: str
+    icono: str
+    pintar: Callable[[Sesion, Tema], None]
+
+
+# Las herramientas, en el orden de las unidades. Una herramienta nueva es una
+# entrada más aquí; la página no tiene que saber cuántas hay. Las funciones de
+# panel se definen más abajo: las lambdas las resuelven al pintar, no al cargar.
+PESTANAS: tuple[Pestana, ...] = (
+    Pestana("tabla", "Tabla de verdad", "table_chart", lambda s, _: _panel_tabla(s)),
+    Pestana("equivalencia", "Equivalencia", "compare_arrows",
+            lambda s, _: _panel_equivalencia(s)),
+    Pestana("conjuntos", "Conjuntos", "join_inner", lambda s, _: _panel_conjuntos(s)),
+    Pestana("venn", "Diagrama de Venn", "pie_chart", lambda s, tema: _panel_venn(s, tema)),
+    Pestana("ecuaciones", "Sistemas de ecuaciones", "grid_on",
+            lambda s, _: _panel_ecuaciones(s)),
+    Pestana("matrices", "Matrices", "apps", lambda s, _: _panel_matrices(s)),
+)
 
 
 @ui.page("/herramientas")
@@ -33,22 +70,12 @@ def pagina_herramientas() -> None:
             "Escribe tus propios ejercicios y contrástalos con el resultado del motor.",
         )
         with ui.tabs().classes("w-full") as pestanas:
-            ui.tab("tabla", label="Tabla de verdad", icon="table_chart")
-            ui.tab("equivalencia", label="Equivalencia", icon="compare_arrows")
-            ui.tab("conjuntos", label="Conjuntos", icon="join_inner")
-            ui.tab("venn", label="Diagrama de Venn", icon="pie_chart")
-            ui.tab("ecuaciones", label="Sistemas de ecuaciones", icon="grid_on")
-        with ui.tab_panels(pestanas, value="tabla").classes("w-full"):
-            with ui.tab_panel("tabla"):
-                _panel_tabla(sesion)
-            with ui.tab_panel("equivalencia"):
-                _panel_equivalencia(sesion)
-            with ui.tab_panel("conjuntos"):
-                _panel_conjuntos(sesion)
-            with ui.tab_panel("venn"):
-                _panel_venn(sesion, gestor.tema)
-            with ui.tab_panel("ecuaciones"):
-                _panel_ecuaciones(sesion)
+            for pestana in PESTANAS:
+                ui.tab(pestana.clave, label=pestana.etiqueta, icon=pestana.icono)
+        with ui.tab_panels(pestanas, value=PESTANAS[0].clave).classes("w-full"):
+            for pestana in PESTANAS:
+                with ui.tab_panel(pestana.clave):
+                    pestana.pintar(sesion, gestor.tema)
 
 
 # --------------------------------------------------------------------------
@@ -252,10 +279,10 @@ def _panel_venn(sesion: Sesion, tema: Tema) -> None:
     _alternar()
 
 
-# Los tres métodos que enseña la asignatura. No hay Cramer de orden 3, ni
-# matriz inversa, ni rangos: no se vieron en clase, y ofrecerlos aquí
-# desalinearía el laboratorio del curso.
-METODOS = ["reducción", "sustitución", "igualación"]
+# Los métodos que enseña la asignatura: los tres de la unidad de ecuaciones y
+# la regla de Cramer de la de matrices, que solo se enseñó para 2 × 2. No hay
+# Cramer de orden 3, ni matriz inversa, ni rangos: no se vieron en clase.
+METODOS = ["reducción", "sustitución", "igualación", "Cramer"]
 
 # La rejilla tiene siempre cuatro columnas —a, b, c y término— y en 2 × 2 se
 # oculta la de c. El término independiente va por tanto en el índice 3, no en
@@ -374,6 +401,147 @@ def _panel_ecuaciones(sesion: Sesion) -> None:
     ui.button("Resolver", icon="play_arrow", on_click=calcular).props("no-caps")
     resultado = ui.column().classes("w-full gap-2")
     alternar()
+
+
+# --------------------------------------------------------------------------
+# Matrices y determinantes
+# --------------------------------------------------------------------------
+DIMENSIONES = [1, 2, 3, 4]
+"""Hasta 4 × 4, el mismo tope que `DIMENSION_MAXIMA` del backend."""
+
+
+class EditorMatriz:
+    """Rejilla de 4 × 4 campos de la que solo se muestran filas × columnas.
+
+    Los dieciséis campos se crean una vez y se ocultan o muestran al cambiar
+    el orden: recrearlos en cada cambio perdería lo que ya estaba escrito en
+    las casillas que siguen visibles. Es una instancia por página, no estado
+    de módulo: dos personas con la pestaña abierta no comparten matrices.
+    """
+
+    def __init__(self, nombre: str, al_confirmar: Callable[[], None]) -> None:
+        with ui.column().classes("gap-1") as self.contenedor:
+            with ui.row().classes("items-center gap-2 no-wrap"):
+                ui.label(nombre).classes("font-mono font-semibold w-5")
+                self.filas = (
+                    ui.select(DIMENSIONES, value=2, label="filas",
+                              on_change=self._mostrar_orden)
+                    .props("outlined dense").classes("w-20")
+                )
+                ui.label("×").classes("lab-tenue")
+                self.columnas = (
+                    ui.select(DIMENSIONES, value=2, label="columnas",
+                              on_change=self._mostrar_orden)
+                    .props("outlined dense").classes("w-28")
+                )
+            self.renglones: list[ui.row] = []
+            self.campos: list[list[ui.input]] = []
+            for _ in DIMENSIONES:
+                with ui.row().classes("gap-1 no-wrap") as renglon:
+                    celdas = [
+                        ui.input(value="0").props("outlined dense input-class=text-right")
+                        .classes("w-16")
+                        for _ in DIMENSIONES
+                    ]
+                for celda in celdas:
+                    celda.on("keydown.enter", al_confirmar)
+                self.renglones.append(renglon)
+                self.campos.append(celdas)
+        self._mostrar_orden()
+
+    def _mostrar_orden(self) -> None:
+        m, n = self.filas.value, self.columnas.value
+        for i, renglon in enumerate(self.renglones):
+            renglon.set_visibility(i < m)
+            for j, celda in enumerate(self.campos[i]):
+                celda.set_visibility(j < n)
+
+    def cargar(self, valores: list[list]) -> None:
+        """Pone una matriz del catálogo: ajusta el orden y rellena con ceros el resto."""
+        m, n = len(valores), len(valores[0])
+        self.filas.set_value(m)
+        self.columnas.set_value(n)
+        for i, j in product(range(len(DIMENSIONES)), repeat=2):
+            self.campos[i][j].set_value(str(valores[i][j]) if i < m and j < n else "0")
+        self._mostrar_orden()
+
+    def leer(self) -> list[list[str]]:
+        """Las entradas visibles como texto; un hueco vacío cuenta como 0."""
+        m, n = self.filas.value, self.columnas.value
+        return [[(self.campos[i][j].value or "").strip() or "0" for j in range(n)]
+                for i in range(m)]
+
+
+def _panel_matrices(sesion: Sesion) -> None:
+    resultado: ui.column
+    try:
+        catalogo = {op["clave"]: op for op in operaciones_matrices(sesion)}
+    except ErrorApi as error:
+        _mostrar_error(error, "")
+        return
+
+    def calcular() -> None:
+        resultado.clear()
+        elegida = catalogo[operacion.value]
+        datos: dict = {"operacion": elegida["clave"], "a": editor_a.leer()}
+        if elegida["usa_b"]:
+            datos["b"] = editor_b.leer()
+        for nombre in elegida["escalares"]:
+            datos[nombre] = (escalares[nombre].value or "").strip() or "0"
+        try:
+            respuesta = operar_matrices(sesion, datos)
+        except ErrorApi as error:
+            with resultado:
+                _mostrar_error(error, "")
+            return
+        with resultado:
+            matriz_resuelta(respuesta)
+
+    def cargar_ejemplo() -> None:
+        """Cada operación abre con su ejercicio de la lámina, como la de ecuaciones."""
+        elegida = catalogo[operacion.value]
+        ejemplo = elegida["ejemplo"]
+        editor_a.cargar(ejemplo["a"])
+        if "b" in ejemplo:
+            editor_b.cargar(ejemplo["b"])
+        editor_b.contenedor.set_visibility(elegida["usa_b"])
+        for nombre, campo in escalares.items():
+            campo.set_visibility(nombre in elegida["escalares"])
+            if nombre in ejemplo:
+                campo.set_value(str(ejemplo[nombre]))
+        fuente.set_text(f"Ejemplo: {elegida['fuente']}.")
+        calcular()
+
+    ui.markdown(
+        "Elige la operación y escribe las matrices. Se admiten fracciones (`1/2`, "
+        "`-3/4`): el motor trabaja con aritmética exacta. Si la operación **no está "
+        "definida** para esos órdenes, la respuesta lo dice y explica por qué. "
+        "Cambiar de operación **carga el ejemplo de la lámina**."
+    ).classes("text-sm lab-tenue")
+    operacion = (
+        ui.select(
+            {clave: f"{op['nombre']}  ·  {op['notacion']}" for clave, op in catalogo.items()},
+            value="producto" if "producto" in catalogo else next(iter(catalogo)),
+            label="Operación",
+            on_change=lambda: cargar_ejemplo(),
+        )
+        .props("outlined dense")
+        .classes("w-full sm:w-96")
+    )
+    fuente = ui.label("").classes("text-xs lab-tenue")
+    with ui.row().classes("w-full gap-8 flex-wrap items-start"):
+        editor_a = EditorMatriz("A", calcular)
+        editor_b = EditorMatriz("B", calcular)
+    with ui.row().classes("gap-2"):
+        escalares = {
+            nombre: ui.input(nombre, value="1").props("outlined dense").classes("w-24")
+            for nombre in ("k", "m")
+        }
+    for campo in escalares.values():
+        campo.on("keydown.enter", calcular)
+    ui.button("Calcular", icon="play_arrow", on_click=calcular).props("no-caps")
+    resultado = ui.column().classes("w-full gap-2")
+    cargar_ejemplo()
 
 
 def _mostrar_error(error: ErrorApi, contexto: str) -> None:

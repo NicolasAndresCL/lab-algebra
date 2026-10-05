@@ -9,7 +9,15 @@ from app.componentes import cabecera, titulo_pagina
 from app.estado import avisar, exigir_sesion
 from app.paginas.tarjeta import panel_tarjeta
 
-COLOR_UNIDAD = {"Lógica": "primary", "Conjuntos": "secondary"}
+# Ecuaciones comparte el primario con Lógica (es el color que ya mostraba por
+# defecto); Matrices toma el acento para no confundirse con Ecuaciones, que es
+# la unidad que tiene al lado en la rejilla.
+COLOR_UNIDAD = {
+    "Lógica": "primary",
+    "Conjuntos": "secondary",
+    "Ecuaciones": "primary",
+    "Matrices": "accent",
+}
 
 
 @ui.page("/")
