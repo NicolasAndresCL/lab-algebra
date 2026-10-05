@@ -4,7 +4,8 @@
 
 Laboratorio de tarjetas de memorización para la asignatura de **Álgebra**
 (Universidad Santo Tomás, 2026): unidades de **lógica proposicional**,
-**teoría de conjuntos** y **sistemas de ecuaciones lineales**.
+**teoría de conjuntos**, **sistemas de ecuaciones lineales** y **matrices y
+determinantes**.
 
 No es un fichero de definiciones. Cada tarjeta trae el concepto, su notación,
 una clave para recordarlo y un **ejercicio resuelto paso a paso** sacado del
@@ -12,8 +13,8 @@ material de clase — porque memorizar una definición sin verla aplicada no
 sirve para rendir una prueba. Encima de eso, el laboratorio **calcula**: las
 tarjetas con fórmula muestran su tabla de verdad generada en vivo, las de
 conjuntos su diagrama de Venn dibujado a partir de los datos del enunciado, y
-las de ecuaciones su sistema resuelto paso a paso con **aritmética exacta** —
-donde la respuesta es 1/3 aparece 1/3, nunca 0,333.
+las de ecuaciones y matrices su sistema o su operación resueltos paso a paso
+con **aritmética exacta** — donde la respuesta es 1/3 aparece 1/3, nunca 0,333.
 
 ---
 
@@ -38,20 +39,21 @@ donde la respuesta es 1/3 aparece 1/3, nunca 0,333.
 
 | | |
 |---|---|
-| **73 tarjetas** | Nueve mazos, todos con ejercicio resuelto y fuente anotada |
+| **114 tarjetas** | Trece mazos en cuatro unidades, todos con ejercicio resuelto y fuente anotada |
 | **Repetición espaciada** | Variante de SM-2: lo que fallas vuelve hoy, lo que aciertas se aleja |
 | **Tablas de verdad** | Analizador propio con las precedencias de la asignatura |
 | **Diagramas de Venn** | matplotlib-venn, con las regiones calculadas por inclusión-exclusión |
-| **Sistemas lineales** | 2×2 y 3×3 en aritmética exacta: clasificación, Δ y desarrollo paso a paso |
+| **Sistemas lineales** | 2×2 y 3×3 en aritmética exacta: clasificación, Δ y desarrollo por cuatro métodos, Cramer incluido |
+| **Matrices** | Suma, producto, traspuesta, traza, tipos y determinante (2×2 y Sarrus) con numpy sobre fracciones exactas |
 | **Tarjetas propias** | Se añaden desde la interfaz, sin tocar código ni reconstruir la imagen |
 | **Cuatro temas** | Tres paletas oscuras y una clara, con el contraste verificado |
-| **768 pruebas** | 717 del backend (con verificación contra sympy) y 51 de las paletas |
+| **1363 pruebas** | 1312 del backend (con verificación contra sympy) y 51 de las paletas |
 
 ## Cómo se ve
 
 | Los mazos y el progreso | Una tarjeta girada |
 |---|---|
-| ![Portada con los nueve mazos](docs/capturas/01-mazos.png) | ![Reverso de una tarjeta con su ejercicio resuelto](docs/capturas/02-estudio.png) |
+| ![Portada con los mazos](docs/capturas/01-mazos.png) | ![Reverso de una tarjeta con su ejercicio resuelto](docs/capturas/02-estudio.png) |
 
 Una tarjeta de conjuntos, con el diagrama generado a partir de las
 cardinalidades del enunciado y con los colores del tema activo:
@@ -70,6 +72,19 @@ independientes hacia el mismo resultado, y si alguna vez discreparan se vería
 al estudiar.
 
 ![Tarjeta de ecuaciones con el sistema resuelto por el motor](docs/capturas/07-tarjeta-sistema.png)
+
+La pestaña de matrices: se elige la operación, se ajusta el orden de cada
+matriz y el motor narra el producto fila por columna, entrada por entrada,
+como en la lámina 30. Si la operación no está definida para esos órdenes, la
+respuesta lo dice y explica por qué.
+
+![Producto de matrices resuelto paso a paso](docs/capturas/08-herramientas-matrices.png)
+
+Y una tarjeta de determinantes: el motor recalcula por Sarrus, reconoce la
+propiedad que permitía saber el resultado sin calcular —aquí, dos filas
+iguales— y dice si la matriz admite inversa.
+
+![Tarjeta de determinantes con la matriz singular](docs/capturas/09-tarjeta-determinante.png)
 
 ## Temas
 
@@ -152,7 +167,7 @@ por debajo de «Con esfuerzo» reinicia la serie y la tarjeta vuelve el mismo
 día; las acertadas se alejan progresivamente (1 día, 3 días, y a partir de ahí
 multiplicando por su factor de facilidad).
 
-**Consultar.** «Mazos» lista los nueve mazos; dentro de cada uno, las tarjetas
+**Consultar.** «Mazos» lista los trece mazos; dentro de cada uno, las tarjetas
 se despliegan enteras y hay un buscador que mira tanto el concepto como la
 definición. Esta es la vista para repasar la víspera de la prueba.
 
@@ -174,15 +189,23 @@ definición. Esta es la vista para repasar la víspera de la prueba.
   paralelas o coincidentes; tres planos en el espacio—. Se admiten fracciones
   (`1/2`, `-19/2`) y todo se calcula en **aritmética exacta**: nunca aparece un
   0,333 donde el enunciado dice 1/3. En 2 × 2 se puede pedir el desarrollo por
-  **sustitución, igualación o reducción**, que son los tres métodos del curso;
+  **sustitución, igualación, reducción o la regla de Cramer** (D, Dₓ y D_y);
   en 3 × 3 va siempre por reducción, que es el sistemático.
+- **Matrices** de hasta 4 × 4: tipo de matriz (cuadrada, identidad, diagonal,
+  escalar, triangular, simétrica, antisimétrica), suma, resta, producto por un
+  escalar, combinación kA + mB, producto en los dos órdenes, traspuesta, traza
+  y determinante de 2 × 2 o 3 × 3. Cada operación abre con el ejemplo de su
+  lámina. El determinante dice si la matriz **admite inversa** y, cuando una de
+  las propiedades del PDF permitía saber el valor sin calcularlo (una línea de
+  ceros, dos iguales o proporcionales, una triangular), lo señala.
 
 **Añadir material.** «Nueva tarjeta» permite crear tarjetas y mazos propios
 para las unidades que vengan después. Entran en la misma cola de repaso. Si
-declaras una fórmula, un diagrama o un sistema, se valida **al guardar**: mejor
-un error en el formulario que una tarjeta que revienta en mitad de un repaso.
-El formulario expone la fórmula; el diagrama y el sistema se declaran desde el
-temario o por la API, que es donde se usan.
+declaras una fórmula, un diagrama, un sistema o una operación con matrices, se
+valida **al guardar**: mejor un error en el formulario que una tarjeta que
+revienta en mitad de un repaso. El formulario expone la fórmula; el diagrama,
+el sistema y la matriz se declaran desde el temario o por la API, que es donde
+se usan.
 
 ## Arquitectura
 
@@ -208,8 +231,8 @@ Tres contenedores, cada uno con una responsabilidad:
   todo lo pide por HTTP a la API. Es el contenedor que se abre en el navegador,
   y por eso se queda con el nombre corto del proyecto.
 - **`lab-algebra-api`** — FastAPI. Aquí viven los motores de lógica, conjuntos,
-  ecuaciones, Venn y repetición espaciada, además de la autenticación. Las tres
-  unidades comparten contenedor a propósito: son módulos de cálculo sin estado
+  ecuaciones, matrices, Venn y repetición espaciada, además de la
+  autenticación. Las cuatro unidades comparten contenedor a propósito: son módulos de cálculo sin estado
   propio ni dependencias distintas, y un servicio por unidad multiplicaría
   healthchecks y entradas de red sin separar nada que estuviera junto por error.
 - **`lab-algebra-db`** — PostgreSQL 16. **No publica el 5432 al host**: nada
@@ -234,7 +257,9 @@ backend/app/
 ├── services/          ← la lógica de verdad, sin HTTP ni base de datos
 │   ├── logica.py      analizador y tablas de verdad
 │   ├── conjuntos.py   operaciones e inclusión-exclusión
-│   ├── ecuaciones.py  sistemas lineales exactos y su clasificación
+│   ├── numeros.py     fracciones exactas: lectura y escritura compartidas
+│   ├── ecuaciones.py  sistemas lineales exactos, su clasificación y Cramer
+│   ├── matrices.py    operaciones, tipos y determinantes (numpy + Fraction)
 │   ├── venn.py        diagramas en PNG
 │   └── repaso.py      repetición espaciada
 └── seed/              el temario, en Python plano
@@ -242,6 +267,17 @@ backend/app/
 
 Los servicios no importan FastAPI ni SQLAlchemy: se prueban llamándolos
 directamente, sin levantar nada.
+
+`matrices.py` está escrito de forma **declarativa**: los tipos de matriz, los
+requisitos de cada operación, las operaciones y los atajos del determinante
+son registros de datos (`TIPOS`, `OPERACIONES`, `ATAJOS`) y no cadenas de `if`.
+Añadir una operación es añadir una entrada; la interfaz la muestra sola, porque
+construye su formulario a partir de `GET /herramientas/matrices/operaciones`.
+Las matrices son arrays de **numpy** con `dtype=object` y entradas `Fraction`:
+se aprovecha el álgebra vectorizada (`A @ B`, `A.T`, `np.trace`, `np.tril`)
+sin perder exactitud. `np.linalg.det` queda fuera a propósito: trabaja en coma
+flotante, y un determinante que vale 0 saldría como 1e−16, que es justo la
+pregunta de la unidad («¿admite inversa?»).
 
 ### Por dentro de la interfaz
 
@@ -252,7 +288,7 @@ frontend/app/
 ├── api.py             cliente HTTP del backend; traduce el contrato de error
 ├── estado.py          sesión del usuario en app.storage.user
 ├── temas.py           ← las cuatro paletas y el gestor que las aplica
-├── componentes.py     cabecera, selector de tema, tabla, diagrama
+├── componentes.py     cabecera, selector de tema, tabla, diagrama, sistema, matriz
 └── paginas/           login · inicio · estudiar · herramientas · nueva
     └── tarjeta.py     render compartido por el listado y el estudio
 ```
@@ -285,16 +321,28 @@ es texto en español que puede cambiar sin romper nada.
 | Sistemas lineales — fundamentos | Ecuaciones | 7 | Sistemas de ecuaciones 2×2 y 3×3 |
 | Métodos de resolución 2 × 2 | Ecuaciones | 7 | Sistemas 2×2; Sistemas y aplicaciones |
 | Clasificación y sistemas 3 × 3 | Ecuaciones | 7 | Sistemas 2×2, lámina 14; Sistemas 3×3, láminas 4 y 5 |
-| | | **73** | |
+| Matrices — fundamentos | Matrices | 9 | Matrices y determinantes, láminas 2 a 18 |
+| Tipos de matrices | Matrices | 7 | Matrices y determinantes, láminas 5 a 20 |
+| Operaciones con matrices | Matrices | 12 | Matrices y determinantes, láminas 21 a 34 |
+| Determinantes y regla de Cramer | Matrices | 13 | Matrices y determinantes, láminas 35 a 47 |
+| | | **114** | |
 
 Cada tarjeta guarda la lámina exacta de la que sale, de modo que cualquier duda
 se resuelve volviendo al PDF y no discutiendo con la aplicación.
 
-La unidad de ecuaciones cubre lo que se enseñó y **solo** lo que se enseñó: los
-tres métodos, la clasificación, la interpretación geométrica y el Δ de 2 × 2.
-No hay regla de Cramer de orden 3, ni matriz inversa, ni rangos — añadirlos
-desalinearía el material del curso, que es el criterio por el que se decide qué
-entra.
+Cada unidad cubre lo que se enseñó y **solo** lo que se enseñó. La de
+ecuaciones: los tres métodos, la clasificación, la interpretación geométrica y
+el Δ de 2 × 2. La de matrices: tipos, operaciones, ecuaciones matriciales,
+determinantes de 2 × 2 y 3 × 3 con sus diez propiedades, y la regla de Cramer
+de 2 × 2, que entra como cuarto método del motor de ecuaciones. No hay Cramer
+de orden 3, ni **cálculo** de la matriz inversa, ni rangos: el PDF dice cuándo
+existe la inversa (det ≠ 0) y la usa para despejar, pero no enseña a
+calcularla. El criterio de qué entra es el temario, no lo que sea técnicamente
+posible.
+
+El PDF de matrices da valores de determinantes de 3 × 3 sin mostrar el método.
+El laboratorio los calcula y los narra con la **regla de Sarrus**, y la tarjeta
+correspondiente lo dice expresamente en vez de atribuírselo a la lámina.
 
 La carga es **idempotente**: se ejecuta en cada arranque, corrige el texto de
 las tarjetas del temario si cambió y **nunca toca una tarjeta creada por el
@@ -352,8 +400,8 @@ instalas algo para resolver una tarea, congélalo en la misma sesión.
 ### Añadir tarjetas al temario
 
 Una tarjeta nueva es una entrada más en el diccionario de
-`backend/app/seed/contenido_logica.py`, `contenido_conjuntos.py` o
-`contenido_ecuaciones.py`. No hace falta tocar nada más: la carga las recoge
+`backend/app/seed/contenido_logica.py`, `contenido_conjuntos.py`,
+`contenido_ecuaciones.py` o `contenido_matrices.py`. No hace falta tocar nada más: la carga las recoge
 sola. Los campos obligatorios son `concepto`, `pregunta`, `definicion`,
 `ejercicio_enunciado`, `ejercicio_desarrollo`, `ejercicio_respuesta` y
 `fuente`; los tests fallan si falta alguno.
@@ -366,15 +414,23 @@ recalcula en vivo al mostrarla:
 | `formula` | La tabla de verdad de la fórmula | `CLASIFICACIONES_ESPERADAS` |
 | `venn` | El diagrama de Venn del enunciado | `REGIONES_DOS_ESPERADAS` y los tests de tres conjuntos |
 | `sistema` | El sistema resuelto paso a paso | `SISTEMAS_ESPERADOS` |
+| `matriz` | La operación con matrices resuelta paso a paso | `MATRICES_ESPERADAS` |
 
-Los tres diccionarios viven en `tests/test_contenido.py` y sus valores se
+Los cuatro diccionarios viven en `tests/test_contenido.py` y sus valores se
 **leen del PDF o se resuelven a mano desde la lámina**, nunca se copian de lo
 que devuelve el programa: copiarlos haría que el test se comparara consigo
-mismo. En el caso de `sistema` hay además un test que falla si añades una
-tarjeta sin su resultado esperado, porque una disciplina que depende de
-acordarse no es una disciplina.
+mismo. En el caso de `sistema` y de `matriz` hay además un test que falla si
+añades una tarjeta sin su resultado esperado —o si queda un esperado
+huérfano—, porque una disciplina que depende de acordarse no es una
+disciplina.
 
-Los coeficientes de `sistema` se escriben como entero o como **texto**
+`matriz` lleva la misma forma que el cuerpo de `POST /herramientas/matrices`:
+`{"operacion": "producto", "a": [[…]], "b": [[…]]}`, con `k` y `m` cuando la
+operación usa escalares. Las operaciones disponibles y lo que pide cada una
+están en `GET /herramientas/matrices/operaciones`.
+
+Los coeficientes de `sistema` y las entradas de `matriz` se escriben como
+entero o como **texto**
 (`"1/2"`, `"-19/2"`), nunca como número con coma: un `0.333` guardado en la
 base ya no se puede volver a leer como el 1/3 que decía el enunciado, y hay un
 test que lo prohíbe.
@@ -404,6 +460,19 @@ original** y sus residuos tienen que dar cero: es la comprobación que no
 depende de nadie, ni siquiera de la clave impresa en el PDF, que también se
 equivoca.
 
+En la unidad de matrices: el motor calcula con numpy sobre fracciones;
+`tests/test_matrices.py` repite cada operación con `sympy.Matrix` sobre más de
+mil matrices aleatorias (con semilla fija, para que un fallo sea
+reproducible) y exige coincidencia exacta; comprueba en miles de casos que
+cada atajo del determinante predice el mismo valor que la fórmula, que es lo
+que afirma la propiedad; y las 32 tarjetas con `matriz` llevan su resultado
+esperado tomado de la lámina, que en esta unidad casi siempre trae la
+respuesta impresa. Un tercer test exige que la respuesta escrita a mano de cada
+tarjeta **cite** el mismo resultado que calcula el motor. Las igualdades de
+matrices con incógnitas (láminas 7 y 8) se resuelven aparte con `sympy.solve`.
+Y la regla de Cramer se contrastó contra los 34 sistemas de 2 × 2 del banco de
+la carpeta de apuntes: coincide con la reducción en todos.
+
 Además, las funciones de conteo **rechazan regiones negativas**: un enunciado
 mal copiado no puede producir un diagrama imposible con una respuesta creíble.
 Y el motor de ecuaciones **rechaza los coeficientes con coma**: aceptar 0,333
@@ -425,12 +494,14 @@ exactamente cero saldría como 1e−17.
 | `arranque` | el stack levanta, queda sano y pasa la prueba de humo |
 
 El último job es el que justifica el pipeline: comprueba que el laboratorio
-**inicia sesión, sirve el temario de las tres unidades y calcula** —una tabla
-de verdad, un reparto de Venn y un sistema con fracciones— de punta a punta. Un
+**inicia sesión, sirve el temario de las cuatro unidades y calcula** —una
+tabla de verdad, un reparto de Venn, un sistema con fracciones, un sistema por
+Cramer y un determinante con fracciones— de punta a punta. Un
 CI que solo lintea da falsa seguridad.
 
 La prueba de humo comprueba también que un sistema con coeficiente `1/2` vuelve
-con `y = 1/2` exacto y que un sistema **incompatible responde 200**: «no tiene
+con `y = 1/2` exacto, que un producto de matrices no definido **responde 200
+con `definida: false`** y que un sistema **incompatible responde 200**: «no tiene
 solución» es una de las tres clasificaciones de la unidad, no un fallo de la
 API, y confundirlo sería un error de dominio disfrazado de error de red.
 
@@ -489,7 +560,8 @@ No debería pasar: el arranque pone el esquema al día antes de sembrar. Si ves
 `UndefinedColumn` o `no such column`, es que se añadió una columna al modelo
 sin declararla en `COLUMNAS_ANADIDAS` de `backend/app/db.py` — añádela ahí y
 reinicia. El log de la API lo dice cuando sí funciona:
-`Columna «tarjetas.sistema» añadida al esquema existente`. Borrar el volumen
+`Columna «tarjetas.matriz» añadida al esquema existente` (o `tarjetas.sistema`
+si vienes de una versión anterior a la 1.1.0). Borrar el volumen
 también «arregla» el síntoma, pero se lleva todo el progreso de estudio por
 delante; no es el camino.
 
@@ -512,6 +584,20 @@ lo estaba, lo deja como lo encontró. En cualquier caso el volumen
 `lab-algebra-datos` se conserva —el `down` va sin `-v`— así que el progreso de
 estudio no se pierde. Para volver a levantarlo: `docker compose up -d`.
 
+**`Bind for 0.0.0.0:8080 failed: port is already allocated`.**
+Otro servicio del equipo —un Jenkins, otro NiceGUI— ya usa el 8080. No hace
+falta pararlo: `PUERTO_WEB=8081 docker compose up -d` publica la interfaz en el
+8081, y la prueba de humo y `verificar.sh` leen la misma variable
+(`PUERTO_WEB=8081 bash scripts/verificar.sh --completo`). Para dejarlo fijo,
+cámbialo en tu `.env`.
+
+**Una operación con matrices dice «no está definida» y no da resultado.**
+No es un fallo: es la respuesta. Sumar un 2 × 3 con un 3 × 2, multiplicar
+cuando las columnas de A no coinciden con las filas de B o pedir la traza de
+una matriz no cuadrada son operaciones que no existen, y el desarrollo explica
+qué orden no encaja. El error (422) queda para lo mal escrito: filas de
+distinta longitud o un número ilegible.
+
 **Quiero empezar el progreso de cero.**
 `docker compose down -v` borra el volumen `lab-algebra-datos` y con él todo el
 historial de repasos. El temario se vuelve a cargar solo en el siguiente
@@ -522,6 +608,7 @@ arranque.
 ## Licencia y alcance
 
 Material de estudio personal de la asignatura de Álgebra (ST 2026): lógica
-proposicional, teoría de conjuntos y sistemas de ecuaciones lineales. Los
+proposicional, teoría de conjuntos, sistemas de ecuaciones lineales y matrices
+y determinantes. Los
 enunciados de los ejercicios provienen de las clases y evaluaciones de la
 asignatura y se citan con su lámina de origen.
