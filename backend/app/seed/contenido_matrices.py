@@ -1,9 +1,11 @@
 """Tarjetas de la unidad de matrices y determinantes.
 
-Fuente única: el PDF «Matrices y determinantes» de la asignatura (47 láminas).
-Casi todas sus láminas son imágenes sin capa de texto, así que los ejercicios
-se transcribieron **mirando las láminas rasterizadas**, no desde el texto
-extraído.
+Fuentes: los dos PDF de la unidad, «Matrices y determinantes»
+(`Matrices-Determinantes.pdf`, 47 láminas) y «Matrices y determinantes II»
+(`Matrices-determ.pdf`, 27 láminas: menores, cofactores, Cramer de 3 × 3 e
+inversa). Casi todas sus láminas son imágenes sin capa de texto, así que los
+ejercicios se transcribieron **mirando las láminas rasterizadas**, no desde el
+texto extraído.
 
 Las tarjetas que declaran `matriz` muestran la operación resuelta paso a paso
 por `services/matrices.py`, con aritmética exacta; las que declaran `sistema`
@@ -15,9 +17,8 @@ en `tests/test_contenido.py`, resueltos a mano desde la lámina.
 Notación dentro del texto: una matriz se escribe por filas, separadas por
 punto y coma. [1 2; 3 4] es la matriz de filas (1, 2) y (3, 4).
 
-Lo que **no** entra, a propósito: el cálculo de la matriz inversa y los
-determinantes de orden mayor que 3. El PDF dice cuándo existe la inversa y la
-usa para despejar ecuaciones matriciales, pero no enseña a calcularla.
+Lo que **no** entra, a propósito: los determinantes de orden mayor que 3 y la
+inversa por Gauss-Jordan. Ninguno de los dos PDF los enseña.
 """
 
 from __future__ import annotations
@@ -940,8 +941,9 @@ MAZOS_MATRICES: list[dict] = [
                     "Con la **regla de Sarrus**: se suman los productos de las tres "
                     "diagonales que «bajan» (a₁₁a₂₂a₃₃, a₁₂a₂₃a₃₁, a₁₃a₂₁a₃₂) y se "
                     "restan los de las tres que «suben» (a₁₃a₂₂a₃₁, a₁₁a₂₃a₃₂, "
-                    "a₁₂a₂₁a₃₃). Las láminas dan determinantes de 3 × 3 ya calculados sin "
-                    "mostrar el método; Sarrus es la regla estándar para obtenerlos."
+                    "a₁₂a₂₁a₃₃). Es un atajo que solo vale en 3 × 3: el método que "
+                    "enseña el curso es el desarrollo por cofactores (tarjeta "
+                    "«Determinante de 3 × 3 por cofactores»). Sirve para comprobar."
                 ),
                 "notacion": "det A = (bajan) − (suben)",
                 "clave_memoria": (
@@ -959,7 +961,10 @@ MAZOS_MATRICES: list[dict] = [
                     "Matrices y determinantes, lámina 39 (el método es la regla de "
                     "Sarrus, que la lámina no desarrolla)"
                 ),
-                "matriz": {"operacion": "determinante", "a": [[1, 0, -2], [3, 1, 1], [3, 2, 0]]},
+                "matriz": {
+                    "operacion": "determinante", "a": [[1, 0, -2], [3, 1, 1], [3, 2, 0]],
+                    "desarrollo": "Sarrus",
+                },
             },
             {
                 "concepto": "Traspuesta y permutación de líneas",
@@ -1110,7 +1115,8 @@ MAZOS_MATRICES: list[dict] = [
                     "**Propiedad 10**: A admite inversa **si y solo si |A| ≠ 0**. Si "
                     "|A| = 0 la matriz es **singular** y no tiene inversa. La inversa "
                     "A⁻¹ cumple A·A⁻¹ = A⁻¹·A = I, y es la que permite despejar "
-                    "ecuaciones matriciales."
+                    "ecuaciones matriciales. Cómo se calcula está en el mazo «Cofactores, "
+                    "inversa y Cramer 3 × 3»."
                 ),
                 "notacion": "existe A⁻¹ ⟺ |A| ≠ 0",
                 "clave_memoria": (
@@ -1256,6 +1262,438 @@ MAZOS_MATRICES: list[dict] = [
                     "incognitas": ["x", "y"],
                     "metodo": "Cramer",
                 },
+            },
+        ],
+    },
+    {
+        "slug": "cofactores-inversa",
+        "nombre": "Cofactores, inversa y Cramer 3 × 3",
+        "unidad": "Matrices",
+        "orden": 140,
+        "descripcion": (
+            "Menores y cofactores, el determinante de 3 × 3 desarrollado por "
+            "cualquier fila o columna, la regla de Cramer para tres ecuaciones y la "
+            "matriz inversa por la adjunta."
+        ),
+        "tarjetas": [
+            {
+                "concepto": "Menor de un elemento",
+                "pregunta": "¿Qué es el menor Mᵢⱼ de un elemento aᵢⱼ?",
+                "definicion": (
+                    "El **determinante que queda al eliminar la fila i y la columna j** "
+                    "de la matriz, es decir, la fila y la columna que contienen a aᵢⱼ. "
+                    "En un 3 × 3, cada menor es un determinante de 2 × 2."
+                ),
+                "notacion": "Mᵢⱼ",
+                "clave_memoria": (
+                    "Tacha con una cruz la fila y la columna del elemento: lo que no "
+                    "quedó tachado es su menor."
+                ),
+                "ejercicio_enunciado": (
+                    "Para A = |2 −1 3; −2 5 1; 0 6 −9|, encuentra (a) M₁₂ y (b) M₂₃."
+                ),
+                "ejercicio_desarrollo": (
+                    "(a) Se eliminan la fila 1 y la columna 2:\n"
+                    "    queda |−2 1; 0 −9|\n"
+                    "    M₁₂ = (−2)(−9) − (1)(0) = 18\n"
+                    "(b) Se eliminan la fila 2 y la columna 3:\n"
+                    "    queda |2 −1; 0 6|\n"
+                    "    M₂₃ = (2)(6) − (−1)(0) = 12"
+                ),
+                "ejercicio_respuesta": "M₁₂ = 18 y M₂₃ = 12.",
+                "fuente": "Matrices y determinantes II, láminas 3 y 4",
+                "matriz": {
+                    "operacion": "menor", "a": [[2, -1, 3], [-2, 5, 1], [0, 6, -9]],
+                    "i": 1, "j": 2,
+                },
+            },
+            {
+                "concepto": "Cofactor de un elemento",
+                "pregunta": "¿Qué es el cofactor Aᵢⱼ y en qué se diferencia del menor?",
+                "definicion": (
+                    "Es el menor con un **signo** que depende de la posición: "
+                    "Aᵢⱼ = (−1)^(i+j)·Mᵢⱼ. Si i + j es **par**, el cofactor es igual al "
+                    "menor; si es **impar**, es su opuesto. Es lo que decide si un término "
+                    "del desarrollo se suma o se resta."
+                ),
+                "notacion": "Aᵢⱼ = (−1)^(i+j)·Mᵢⱼ",
+                "clave_memoria": (
+                    "Los signos forman un tablero de ajedrez que empieza en +: "
+                    "[+ − +; − + −; + − +]."
+                ),
+                "ejercicio_enunciado": (
+                    "Para A = |2 −1 3; −2 5 1; 0 6 −9|, con M₁₂ = 18 y M₂₃ = 12, "
+                    "calcula los cofactores A₁₂ y A₂₃."
+                ),
+                "ejercicio_desarrollo": (
+                    "A₁₂: 1 + 2 = 3 es impar → (−1)³ = −1 → A₁₂ = −1·18 = −18\n"
+                    "A₂₃: 2 + 3 = 5 es impar → (−1)⁵ = −1 → A₂₃ = −1·12 = −12\n"
+                    "Las dos posiciones son «−» en el tablero [+ − +; − + −; + − +]."
+                ),
+                "ejercicio_respuesta": "A₁₂ = −18 y A₂₃ = −12.",
+                "fuente": "Matrices y determinantes II, láminas 7 y 8",
+                "matriz": {
+                    "operacion": "cofactor", "a": [[2, -1, 3], [-2, 5, 1], [0, 6, -9]],
+                    "i": 2, "j": 3,
+                },
+            },
+            {
+                "concepto": "Determinante de 3 × 3 por cofactores",
+                "pregunta": "¿Cómo se calcula un determinante de 3 × 3 desarrollando por la primera fila?",
+                "definicion": (
+                    "Cada elemento de la fila se multiplica por su **cofactor** y se suman "
+                    "los resultados: |A| = a₁₁·A₁₁ + a₁₂·A₁₂ + a₁₃·A₁₃. Con los signos "
+                    "escritos: |A| = a₁₁M₁₁ − a₁₂M₁₂ + a₁₃M₁₃. Es el método que enseña "
+                    "el curso para el 3 × 3."
+                ),
+                "notacion": "|A| = a₁₁M₁₁ − a₁₂M₁₂ + a₁₃M₁₃",
+                "clave_memoria": (
+                    "Más, menos, más. El «menos» del medio no es opcional: es el signo "
+                    "del cofactor A₁₂."
+                ),
+                "ejercicio_enunciado": "Sea A = [4 7 −2; 3 −5 1; −8 6 9]. Calcula |A|.",
+                "ejercicio_desarrollo": (
+                    "|A| = 4·|−5 1; 6 9| − 7·|3 1; −8 9| + (−2)·|3 −5; −8 6|\n"
+                    "M₁₁ = (−5)(9) − (1)(6) = −51\n"
+                    "M₁₂ = (3)(9) − (1)(−8) = 35\n"
+                    "M₁₃ = (3)(6) − (−5)(−8) = −22\n"
+                    "|A| = 4(−51) − 7(35) + (−2)(−22) = −204 − 245 + 44 = −405"
+                ),
+                "ejercicio_respuesta": "|A| = −405.",
+                "fuente": "Matrices y determinantes II, láminas 1, 2 y 5",
+                "matriz": {
+                    "operacion": "determinante",
+                    "a": [[4, 7, -2], [3, -5, 1], [-8, 6, 9]],
+                    "desarrollo": "fila 1",
+                },
+            },
+            {
+                "concepto": "Desarrollo por cualquier fila o columna",
+                "pregunta": "¿Hay que desarrollar siempre por la primera fila?",
+                "definicion": (
+                    "No: el determinante se obtiene multiplicando los elementos de "
+                    "**cualquier fila o columna** por sus cofactores y sumando. Todas las "
+                    "líneas dan el mismo valor; lo que cambia es cuánto cuesta llegar."
+                ),
+                "notacion": "|A| = Σ aᵢⱼ·Aᵢⱼ sobre una fila o una columna",
+                "clave_memoria": (
+                    "Elegir línea es elegir trabajo, no resultado. Si dos líneas dan "
+                    "valores distintos, hay un error de signo."
+                ),
+                "ejercicio_enunciado": (
+                    "Calcula |3 4 −1; 4 6 2; 8 −2 3| desarrollando por la columna 3 y "
+                    "compara con el desarrollo por la fila 1."
+                ),
+                "ejercicio_desarrollo": (
+                    "Columna 3: (−1)^(1+3)(−1)·|4 6; 8 −2| + (−1)^(2+3)(2)·|3 4; 8 −2| "
+                    "+ (−1)^(3+3)(3)·|3 4; 4 6|\n"
+                    "   = −1(−8 − 48) − 2(−6 − 32) + 3(18 − 16)\n"
+                    "   = 56 + 76 + 6 = 138\n"
+                    "Fila 1 (lámina 10): 3(22) − 4(−4) + (−1)(−56) = 66 + 16 + 56 = 138 ✓"
+                ),
+                "ejercicio_respuesta": "Por las dos líneas, el determinante vale 138.",
+                "fuente": "Matrices y determinantes II, láminas 9 a 11",
+                "matriz": {
+                    "operacion": "determinante",
+                    "a": [[3, 4, -1], [4, 6, 2], [8, -2, 3]],
+                    "desarrollo": "columna 3",
+                },
+            },
+            {
+                "concepto": "Elegir la línea con más ceros",
+                "pregunta": "¿Por qué fila o columna conviene desarrollar un determinante?",
+                "definicion": (
+                    "Por la que tenga **más ceros**: el término de un elemento que vale 0 "
+                    "es 0, así que su menor ni se calcula. Con un cero se ahorra un "
+                    "determinante de 2 × 2; con dos, dos."
+                ),
+                "clave_memoria": "Busca los ceros antes de empezar: cada cero es un menor menos.",
+                "ejercicio_enunciado": (
+                    "Calcula |2 −3 5; 1 0 4; 3 −3 9| desarrollando por la fila 2."
+                ),
+                "ejercicio_desarrollo": (
+                    "La fila 2 es (1, 0, 4): a₂₂ = 0 y su término desaparece.\n"
+                    "Signos de la fila 2: −, +, −.\n"
+                    "|A| = −1·|−3 5; −3 9| + 0 − 4·|2 −3; 3 −3|\n"
+                    "    = −1(−27 + 15) − 4(−6 + 9)\n"
+                    "    = 12 − 12 = 0\n"
+                    "La lámina 6 lo desarrolla por la fila 1 y llega al mismo 0, con un "
+                    "menor más: 2·12 + 3(−3) + 5(−3) = 0."
+                ),
+                "ejercicio_respuesta": "El determinante vale 0.",
+                "fuente": "Matrices y determinantes II, láminas 6 y 8",
+                "matriz": {
+                    "operacion": "determinante",
+                    "a": [[2, -3, 5], [1, 0, 4], [3, -3, 9]],
+                    "desarrollo": "fila 2",
+                },
+            },
+            {
+                "concepto": "Regla de Cramer de 3 × 3",
+                "pregunta": "¿Cómo se resuelve un sistema de tres ecuaciones por la regla de Cramer?",
+                "definicion": (
+                    "Si D, el determinante de los coeficientes, es **distinto de 0**: "
+                    "x = Dₓ/D, y = D_y/D, z = D_z/D. Cada numerador es D con la columna "
+                    "de esa incógnita **cambiada por los términos independientes**. Los "
+                    "cuatro determinantes se calculan desarrollando por cofactores."
+                ),
+                "notacion": "x = Dₓ/D,  y = D_y/D,  z = D_z/D,  D ≠ 0",
+                "clave_memoria": (
+                    "Igual que en 2 × 2, pero con cuatro determinantes de 3 × 3. El "
+                    "denominador es siempre el mismo D."
+                ),
+                "ejercicio_enunciado": (
+                    "Usa la regla de Cramer, si es aplicable: "
+                    "2x + y − z = 3 ; −x + 2y + 4z = −3 ; x − 2y − 3z = 4."
+                ),
+                "ejercicio_desarrollo": (
+                    "D = 2·|2 4; −2 −3| − 1·|−1 4; 1 −3| + (−1)·|−1 2; 1 −2|\n"
+                    "  = 2(2) − 1(−1) + (−1)(0) = 5 ≠ 0 → es aplicable\n"
+                    "Dₓ = 3(2) − 1(−7) + (−1)(−2) = 15\n"
+                    "D_y = 2(−7) − 3(−1) + (−1)(−1) = −10\n"
+                    "D_z = 2(2) − 1(−1) + 3(0) = 5\n"
+                    "x = 15/5 = 3;  y = −10/5 = −2;  z = 5/5 = 1\n"
+                    "Comprobación en (1): 2(3) + (−2) − 1 = 3 ✓"
+                ),
+                "ejercicio_respuesta": "(x, y, z) = (3, −2, 1).",
+                "fuente": "Matrices y determinantes II, láminas 12 a 16",
+                "sistema": {
+                    "matriz": [[2, 1, -1, 3], [-1, 2, 4, -3], [1, -2, -3, 4]],
+                    "incognitas": ["x", "y", "z"],
+                    "metodo": "Cramer",
+                },
+            },
+            {
+                "concepto": "Cramer de 3 × 3 cuando D = 0",
+                "pregunta": "¿Qué pasa con la regla de Cramer de 3 × 3 si D = 0?",
+                "definicion": (
+                    "**No es aplicable**: el sistema es incompatible (incongruente) o "
+                    "tiene infinitas soluciones, y Cramer no dice cuál de las dos. Ojo: a "
+                    "diferencia del 2 × 2, en 3 × 3 que Dₓ, D_y y D_z valgan también 0 "
+                    "**no** garantiza infinitas soluciones; para decidir hay que eliminar."
+                ),
+                "notacion": "D = 0 ⟹ Cramer no es aplicable",
+                "clave_memoria": (
+                    "D = 0 cierra la puerta de Cramer y abre la de la eliminación de "
+                    "Gauss: ahí se ve si sale 0 = 0 o 0 = k."
+                ),
+                "ejercicio_enunciado": (
+                    "¿Se puede resolver por Cramer 3x − 2y + 2z = 6 ; 7x − 3y + 2z = −1 ; "
+                    "2x − 3y + 4z = 0?"
+                ),
+                "ejercicio_desarrollo": (
+                    "D = 3·|−3 2; −3 4| − (−2)·|7 2; 2 4| + 2·|7 −3; 2 −3|\n"
+                    "  = 3(−6) + 2(24) + 2(−15) = −18 + 48 − 30 = 0\n"
+                    "D = 0 → Cramer no es aplicable.\n"
+                    "Por eliminación (tarjeta «Un 3 × 3 sin solución» de la unidad de "
+                    "ecuaciones) aparece una igualdad falsa: el sistema es incompatible."
+                ),
+                "ejercicio_respuesta": "No: D = 0, y el sistema resulta incompatible.",
+                "fuente": (
+                    "Matrices y determinantes II, lámina 16; sistema de «Sistemas de "
+                    "ecuaciones (3 × 3)», lámina 5"
+                ),
+                "sistema": {
+                    "matriz": [[3, -2, 2, 6], [7, -3, 2, -1], [2, -3, 4, 0]],
+                    "incognitas": ["x", "y", "z"],
+                    "metodo": "Cramer",
+                },
+            },
+            {
+                "concepto": "Matriz adjunta de 2 × 2",
+                "pregunta": "¿Cómo se obtiene la adjunta de una matriz de 2 × 2?",
+                "definicion": (
+                    "Con dos pasos: se **intercambian** los elementos de la diagonal "
+                    "principal (a y d) y se **cambia el signo** de los de la diagonal "
+                    "secundaria (b y c)."
+                ),
+                "notacion": "adj [a b; c d] = [d −b; −c a]",
+                "clave_memoria": "La principal cambia de lugar; la secundaria cambia de signo.",
+                "ejercicio_enunciado": "Calcula la adjunta de A = [2 −4; 1 3].",
+                "ejercicio_desarrollo": (
+                    "Diagonal principal: 2 y 3 se intercambian → 3 arriba, 2 abajo.\n"
+                    "Diagonal secundaria: −4 → 4 y 1 → −1.\n"
+                    "adj(A) = [3 4; −1 2]"
+                ),
+                "ejercicio_respuesta": "adj(A) = [3 4; −1 2].",
+                "fuente": "Matrices y determinantes II, láminas 17 y 20",
+                "matriz": {"operacion": "adjunta", "a": [[2, -4], [1, 3]]},
+            },
+            {
+                "concepto": "Matriz inversa",
+                "pregunta": "¿Qué es la matriz inversa A⁻¹?",
+                "definicion": (
+                    "La matriz A⁻¹ de n × n que cumple **A·A⁻¹ = A⁻¹·A = Iₙ**. No todas "
+                    "las cuadradas la tienen: si existe, A es **no singular**; si no, "
+                    "**singular**. Existe exactamente cuando det A ≠ 0."
+                ),
+                "notacion": "A·A⁻¹ = A⁻¹·A = Iₙ",
+                "clave_memoria": (
+                    "Una inversa se comprueba sin volver a calcularla: multiplícala por A "
+                    "y tiene que salir la identidad."
+                ),
+                "ejercicio_enunciado": (
+                    "Comprueba que [3/10 2/5; −1/10 1/5] es la inversa de A = [2 −4; 1 3]."
+                ),
+                "ejercicio_desarrollo": (
+                    "A·A⁻¹, fila por columna:\n"
+                    "c₁₁ = 2(3/10) + (−4)(−1/10) = 6/10 + 4/10 = 1\n"
+                    "c₁₂ = 2(2/5) + (−4)(1/5) = 4/5 − 4/5 = 0\n"
+                    "c₂₁ = 1(3/10) + 3(−1/10) = 3/10 − 3/10 = 0\n"
+                    "c₂₂ = 1(2/5) + 3(1/5) = 2/5 + 3/5 = 1\n"
+                    "Sale I₂, así que sí es la inversa."
+                ),
+                "ejercicio_respuesta": "A·A⁻¹ = [1 0; 0 1] = I₂: es la inversa.",
+                "fuente": "Matrices y determinantes II, lámina 18",
+                "matriz": {
+                    "operacion": "producto",
+                    "a": [[2, -4], [1, 3]],
+                    "b": [["3/10", "2/5"], ["-1/10", "1/5"]],
+                },
+            },
+            {
+                "concepto": "Inversa de 2 × 2",
+                "pregunta": "¿Cómo se calcula la inversa de una matriz de 2 × 2?",
+                "definicion": (
+                    "A es invertible si y solo si det A ≠ 0, y entonces "
+                    "**A⁻¹ = (1/det A)·[a₂₂ −a₁₂; −a₂₁ a₁₁]**: el inverso del "
+                    "determinante por la adjunta."
+                ),
+                "notacion": "A⁻¹ = (1/det A)·adj(A)",
+                "clave_memoria": (
+                    "Primero el determinante: si da 0, se termina ahí, porque no hay "
+                    "inversa que calcular."
+                ),
+                "ejercicio_enunciado": "Sea A = [2 −4; 1 3]. Calcula A⁻¹ si existe.",
+                "ejercicio_desarrollo": (
+                    "det A = (2)(3) − (−4)(1) = 6 + 4 = 10 ≠ 0 → existe.\n"
+                    "adj(A) = [3 4; −1 2]\n"
+                    "A⁻¹ = (1/10)·[3 4; −1 2] = [3/10 4/10; −1/10 2/10]\n"
+                    "Simplificando: [3/10 2/5; −1/10 1/5]. (La lámina 20 deja el "
+                    "ejercicio sin la respuesta impresa.)"
+                ),
+                "ejercicio_respuesta": "A⁻¹ = [3/10 2/5; −1/10 1/5].",
+                "fuente": "Matrices y determinantes II, láminas 19 y 20",
+                "matriz": {"operacion": "inversa", "a": [[2, -4], [1, 3]]},
+            },
+            {
+                "concepto": "Matriz de cofactores",
+                "pregunta": "¿Qué es la matriz de cofactores C de una matriz cuadrada?",
+                "definicion": (
+                    "La matriz que tiene en cada posición el **cofactor** del elemento "
+                    "que ocupa esa posición en A: Cᵢⱼ = (−1)^(i+j)·Mᵢⱼ. En un 3 × 3 son "
+                    "nueve determinantes de 2 × 2."
+                ),
+                "notacion": "C = (Cᵢⱼ), con Cᵢⱼ = (−1)^(i+j)·Mᵢⱼ",
+                "clave_memoria": (
+                    "Primero los nueve menores, después el tablero de signos encima. "
+                    "Separar los dos pasos evita la mayoría de los errores."
+                ),
+                "ejercicio_enunciado": "Calcula la matriz de cofactores de A = [1 2 0; 0 1 1; 1 0 3].",
+                "ejercicio_desarrollo": (
+                    "C₁₁ = +|1 1; 0 3| = 3     C₁₂ = −|0 1; 1 3| = 1     C₁₃ = +|0 1; 1 0| = −1\n"
+                    "C₂₁ = −|2 0; 0 3| = −6    C₂₂ = +|1 0; 1 3| = 3     C₂₃ = −|1 2; 1 0| = 2\n"
+                    "C₃₁ = +|2 0; 1 1| = 2     C₃₂ = −|1 0; 0 1| = −1    C₃₃ = +|1 2; 0 1| = 1"
+                ),
+                "ejercicio_respuesta": "C = [3 1 −1; −6 3 2; 2 −1 1].",
+                "fuente": "Matrices y determinantes II, láminas 23 y 24",
+                "matriz": {"operacion": "cofactores", "a": [[1, 2, 0], [0, 1, 1], [1, 0, 3]]},
+            },
+            {
+                "concepto": "Matriz adjunta de 3 × 3",
+                "pregunta": "¿Cómo se obtiene la adjunta de una matriz de 3 × 3?",
+                "definicion": (
+                    "Es la **traspuesta de la matriz de cofactores**: adj(A) = Cᵀ. La "
+                    "fila i de C pasa a ser la columna i de la adjunta."
+                ),
+                "notacion": "adj(A) = Cᵀ",
+                "clave_memoria": (
+                    "Olvidar trasponer es el error más común: sin ese paso, lo que "
+                    "sale es C y no la adjunta."
+                ),
+                "ejercicio_enunciado": (
+                    "Con A = [1 2 0; 0 1 1; 1 0 3] y su matriz de cofactores "
+                    "C = [3 1 −1; −6 3 2; 2 −1 1], obtén adj(A)."
+                ),
+                "ejercicio_desarrollo": (
+                    "Se traspone C:\n"
+                    "Fila 1 de C (3, 1, −1) → columna 1 de adj(A)\n"
+                    "Fila 2 de C (−6, 3, 2) → columna 2\n"
+                    "Fila 3 de C (2, −1, 1) → columna 3"
+                ),
+                "ejercicio_respuesta": "adj(A) = [3 −6 2; 1 3 −1; −1 2 1].",
+                "fuente": "Matrices y determinantes II, láminas 21 y 25",
+                "matriz": {"operacion": "adjunta", "a": [[1, 2, 0], [0, 1, 1], [1, 0, 3]]},
+            },
+            {
+                "concepto": "Inversa de 3 × 3 por la adjunta",
+                "pregunta": "¿Cuáles son los pasos para invertir una matriz de 3 × 3?",
+                "definicion": (
+                    "1) Calcular det A; si es 0, parar. 2) Calcular los nueve cofactores "
+                    "y formar C. 3) Trasponer: adj(A) = Cᵀ. 4) Multiplicar adj(A) por "
+                    "1/det A para obtener A⁻¹."
+                ),
+                "notacion": "A⁻¹ = (1/det A)·Cᵀ",
+                "clave_memoria": (
+                    "Determinante, cofactores, trasponer, dividir. El determinante va "
+                    "primero porque, si es 0, todo lo demás sobra."
+                ),
+                "ejercicio_enunciado": "Calcula la inversa de A = [1 2 0; 0 1 1; 1 0 3].",
+                "ejercicio_desarrollo": (
+                    "1) Por la columna 1: det A = 1(3 − 0) − 0 + 1(2 − 0) = 5 ≠ 0\n"
+                    "2) C = [3 1 −1; −6 3 2; 2 −1 1]\n"
+                    "3) adj(A) = Cᵀ = [3 −6 2; 1 3 −1; −1 2 1]\n"
+                    "4) A⁻¹ = (1/5)·adj(A)"
+                ),
+                "ejercicio_respuesta": "A⁻¹ = [3/5 −6/5 2/5; 1/5 3/5 −1/5; −1/5 2/5 1/5].",
+                "fuente": "Matrices y determinantes II, láminas 21 a 25",
+                "matriz": {"operacion": "inversa", "a": [[1, 2, 0], [0, 1, 1], [1, 0, 3]]},
+            },
+            {
+                "concepto": "Inversa con determinante 1",
+                "pregunta": "¿Qué tiene de particular la inversa de una matriz con det A = 1?",
+                "definicion": (
+                    "Como A⁻¹ = (1/det A)·adj(A), con det A = 1 la inversa **es la "
+                    "adjunta**: si A tiene entradas enteras, A⁻¹ también, sin una sola "
+                    "fracción."
+                ),
+                "clave_memoria": "det A = 1: invertir es solo calcular la adjunta.",
+                "ejercicio_enunciado": "Calcula la inversa de A = [1 2 3; 0 1 4; 5 6 0].",
+                "ejercicio_desarrollo": (
+                    "det A = 1(0 − 24) − 2(0 − 20) + 3(0 − 5) = −24 + 40 − 15 = 1\n"
+                    "C = [−24 20 −5; 18 −15 4; 5 −4 1]\n"
+                    "adj(A) = Cᵀ = [−24 18 5; 20 −15 −4; −5 4 1]\n"
+                    "A⁻¹ = (1/1)·adj(A) = adj(A)"
+                ),
+                "ejercicio_respuesta": "A⁻¹ = [−24 18 5; 20 −15 −4; −5 4 1].",
+                "fuente": "Matrices y determinantes II, láminas 26 y 27",
+                "matriz": {"operacion": "inversa", "a": [[1, 2, 3], [0, 1, 4], [5, 6, 0]]},
+            },
+            {
+                "concepto": "Una matriz singular no tiene inversa",
+                "pregunta": "¿Qué se responde si piden la inversa de una matriz con det A = 0?",
+                "definicion": (
+                    "Que **no existe**: A es singular. No es un error de cálculo ni una "
+                    "matriz de ceros; la división entre det A no se puede hacer. Por eso "
+                    "el primer paso de toda inversa es el determinante."
+                ),
+                "clave_memoria": (
+                    "Antes de los nueve cofactores, el determinante. Si da 0, la "
+                    "respuesta ya está."
+                ),
+                "ejercicio_enunciado": "Calcula, si existe, la inversa de B = [2 1 1; 2 1 1; 0 −3 1].",
+                "ejercicio_desarrollo": (
+                    "Las filas 1 y 2 son iguales → propiedad 3 → |B| = 0.\n"
+                    "Con det B = 0 no se puede multiplicar por 1/det B.\n"
+                    "B es singular: no tiene inversa, y no hace falta calcular ningún "
+                    "cofactor."
+                ),
+                "ejercicio_respuesta": "B⁻¹ no existe: B es singular (|B| = 0).",
+                "fuente": (
+                    "Matrices y determinantes, lámina 43; Matrices y determinantes II, "
+                    "láminas 18 y 21"
+                ),
+                "matriz": {"operacion": "inversa", "a": [[2, 1, 1], [2, 1, 1], [0, -3, 1]]},
             },
         ],
     },

@@ -338,6 +338,18 @@ SISTEMAS_ESPERADOS: dict[str, dict] = {
         "delta": Fraction(6),
         "valores": {"x": Fraction(-1, 2), "y": Fraction(-2, 3)},
     },
+    # «Matrices y determinantes II»: Cramer de 3 × 3. D = 5, Dₓ = 15, D_y = −10 y
+    # D_z = 5 están impresos en las láminas 14 y 15. En 3 × 3 no hay Δ.
+    "Regla de Cramer de 3 × 3": {
+        "clasificacion": "compatible determinado",
+        "delta": None,
+        "valores": {"x": Fraction(3), "y": Fraction(-2), "z": Fraction(1)},
+    },
+    "Cramer de 3 × 3 cuando D = 0": {
+        "clasificacion": "incompatible",
+        "delta": None,
+        "valores": {},
+    },
 }
 
 TARJETAS_CON_SISTEMA = [(slug, t) for slug, t in TARJETAS if t.get("sistema")]
@@ -428,6 +440,27 @@ MATRICES_ESPERADAS: dict[str, dict] = {
     "Multiplicar una línea por un número": {"valor": Fraction(-22)},
     "Determinante de una matriz triangular": {"valor": Fraction(-12)},
     "Matriz inversa: cuándo existe": {"valor": Fraction(0), "invertible": False},
+    # «Matrices y determinantes II» (las láminas imprimen la respuesta, salvo la 20)
+    "Menor de un elemento": {"valor": Fraction(18)},
+    "Cofactor de un elemento": {"valor": Fraction(-12)},
+    "Determinante de 3 × 3 por cofactores": {"valor": Fraction(-405), "invertible": True},
+    "Desarrollo por cualquier fila o columna": {"valor": Fraction(138)},
+    "Elegir la línea con más ceros": {"valor": Fraction(0), "invertible": False},
+    "Matriz adjunta de 2 × 2": {"resultado": _m([3, 4], [-1, 2])},
+    "Matriz inversa": {"resultado": _m([1, 0], [0, 1])},
+    # Lámina 20: sin respuesta impresa; resuelta a mano, (1/10)·[3 4; −1 2].
+    "Inversa de 2 × 2": {
+        "resultado": [[Fraction(3, 10), Fraction(2, 5)], [Fraction(-1, 10), Fraction(1, 5)]],
+        "invertible": True,
+    },
+    "Matriz de cofactores": {"resultado": _m([3, 1, -1], [-6, 3, 2], [2, -1, 1])},
+    "Matriz adjunta de 3 × 3": {"resultado": _m([3, -6, 2], [1, 3, -1], [-1, 2, 1])},
+    "Inversa de 3 × 3 por la adjunta": {
+        "resultado": [[Fraction(v, 5) for v in fila]
+                      for fila in ([3, -6, 2], [1, 3, -1], [-1, 2, 1])],
+    },
+    "Inversa con determinante 1": {"resultado": _m([-24, 18, 5], [20, -15, -4], [-5, 4, 1])},
+    "Una matriz singular no tiene inversa": {"definida": False, "invertible": False},
 }
 
 TARJETAS_CON_MATRIZ = [(slug, t) for slug, t in TARJETAS if t.get("matriz")]
