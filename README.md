@@ -39,15 +39,15 @@ con **aritmética exacta** — donde la respuesta es 1/3 aparece 1/3, nunca 0,33
 
 | | |
 |---|---|
-| **114 tarjetas** | Trece mazos en cuatro unidades, todos con ejercicio resuelto y fuente anotada |
+| **129 tarjetas** | Catorce mazos en cuatro unidades, todos con ejercicio resuelto y fuente anotada |
 | **Repetición espaciada** | Variante de SM-2: lo que fallas vuelve hoy, lo que aciertas se aleja |
 | **Tablas de verdad** | Analizador propio con las precedencias de la asignatura |
 | **Diagramas de Venn** | matplotlib-venn, con las regiones calculadas por inclusión-exclusión |
-| **Sistemas lineales** | 2×2 y 3×3 en aritmética exacta: clasificación, Δ y desarrollo por cuatro métodos, Cramer incluido |
-| **Matrices** | Suma, producto, traspuesta, traza, tipos y determinante (2×2 y Sarrus) con numpy sobre fracciones exactas |
+| **Sistemas lineales** | 2×2 y 3×3 en aritmética exacta: clasificación, Δ y desarrollo por cuatro métodos, Cramer de 2×2 y 3×3 incluido |
+| **Matrices** | Operaciones, tipos, menores, cofactores, determinante por cualquier fila o columna, adjunta e inversa, con numpy sobre fracciones exactas |
 | **Tarjetas propias** | Se añaden desde la interfaz, sin tocar código ni reconstruir la imagen |
 | **Cuatro temas** | Tres paletas oscuras y una clara, con el contraste verificado |
-| **1363 pruebas** | 1312 del backend (con verificación contra sympy) y 51 de las paletas |
+| **1528 pruebas** | 1477 del backend (con verificación contra sympy) y 51 de las paletas |
 
 ## Cómo se ve
 
@@ -80,11 +80,21 @@ respuesta lo dice y explica por qué.
 
 ![Producto de matrices resuelto paso a paso](docs/capturas/08-herramientas-matrices.png)
 
-Y una tarjeta de determinantes: el motor recalcula por Sarrus, reconoce la
-propiedad que permitía saber el resultado sin calcular —aquí, dos filas
-iguales— y dice si la matriz admite inversa.
+La inversa de 3 × 3 por la adjunta, con los cuatro pasos de la lámina 21
+—determinante, cofactores, trasponer, dividir— y la comprobación A·A⁻¹ = I al
+final:
 
-![Tarjeta de determinantes con la matriz singular](docs/capturas/09-tarjeta-determinante.png)
+![Inversa de 3×3 resuelta paso a paso](docs/capturas/10-herramientas-inversa.png)
+
+El determinante se desarrolla **por la fila o columna que elijas**: aquí, por
+la columna 3, como en la lámina 11, y da el mismo 138 que por la fila 1.
+
+![Determinante desarrollado por la columna 3](docs/capturas/11-determinante-por-columna.png)
+
+Y una tarjeta del mazo de cofactores: el desarrollo escrito a mano arriba y,
+debajo, el que recalcula el motor.
+
+![Tarjeta del menor de un elemento](docs/capturas/09-tarjeta-determinante.png)
 
 ## Temas
 
@@ -167,7 +177,7 @@ por debajo de «Con esfuerzo» reinicia la serie y la tarjeta vuelve el mismo
 día; las acertadas se alejan progresivamente (1 día, 3 días, y a partir de ahí
 multiplicando por su factor de facilidad).
 
-**Consultar.** «Mazos» lista los trece mazos; dentro de cada uno, las tarjetas
+**Consultar.** «Mazos» lista los catorce mazos; dentro de cada uno, las tarjetas
 se despliegan enteras y hay un buscador que mira tanto el concepto como la
 definición. Esta es la vista para repasar la víspera de la prueba.
 
@@ -190,14 +200,22 @@ definición. Esta es la vista para repasar la víspera de la prueba.
   (`1/2`, `-19/2`) y todo se calcula en **aritmética exacta**: nunca aparece un
   0,333 donde el enunciado dice 1/3. En 2 × 2 se puede pedir el desarrollo por
   **sustitución, igualación, reducción o la regla de Cramer** (D, Dₓ y D_y);
-  en 3 × 3 va siempre por reducción, que es el sistemático.
+  en 3 × 3, por **reducción o Cramer**, que son los dos que enseña el curso
+  para ese orden. El selector ofrece en cada orden solo los métodos que le
+  corresponden, y la lista la sirve el backend.
 - **Matrices** de hasta 4 × 4: tipo de matriz (cuadrada, identidad, diagonal,
   escalar, triangular, simétrica, antisimétrica), suma, resta, producto por un
   escalar, combinación kA + mB, producto en los dos órdenes, traspuesta, traza
-  y determinante de 2 × 2 o 3 × 3. Cada operación abre con el ejemplo de su
-  lámina. El determinante dice si la matriz **admite inversa** y, cuando una de
-  las propiedades del PDF permitía saber el valor sin calcularlo (una línea de
-  ceros, dos iguales o proporcionales, una triangular), lo señala.
+  y determinante de 2 × 2 o 3 × 3; **menor** y **cofactor** de un elemento,
+  **matriz de cofactores**, **adjunta** e **inversa**. Cada operación abre con
+  el ejemplo de su lámina y muestra solo los campos que pide (k y m, la fila i
+  y la columna j, la línea de desarrollo). El determinante de 3 × 3 se narra
+  **por cofactores en la fila o columna que se elija**, como lo enseña el
+  curso; Sarrus queda como opción. Dice si la matriz **admite inversa** y,
+  cuando una de las propiedades del PDF permitía saber el valor sin calcularlo
+  (una línea de ceros, dos iguales o proporcionales, una triangular), lo
+  señala. La inversa termina comprobando que A·A⁻¹ = I, y si la matriz es
+  singular responde que no existe, sin error.
 
 **Añadir material.** «Nueva tarjeta» permite crear tarjetas y mazos propios
 para las unidades que vengan después. Entran en la misma cola de repaso. Si
@@ -258,8 +276,8 @@ backend/app/
 │   ├── logica.py      analizador y tablas de verdad
 │   ├── conjuntos.py   operaciones e inclusión-exclusión
 │   ├── numeros.py     fracciones exactas: lectura y escritura compartidas
-│   ├── ecuaciones.py  sistemas lineales exactos, su clasificación y Cramer
-│   ├── matrices.py    operaciones, tipos y determinantes (numpy + Fraction)
+│   ├── ecuaciones.py  sistemas lineales exactos, su clasificación y Cramer 2×2/3×3
+│   ├── matrices.py    operaciones, tipos, cofactores, inversa (numpy + Fraction)
 │   ├── venn.py        diagramas en PNG
 │   └── repaso.py      repetición espaciada
 └── seed/              el temario, en Python plano
@@ -269,10 +287,19 @@ Los servicios no importan FastAPI ni SQLAlchemy: se prueban llamándolos
 directamente, sin levantar nada.
 
 `matrices.py` está escrito de forma **declarativa**: los tipos de matriz, los
-requisitos de cada operación, las operaciones y los atajos del determinante
-son registros de datos (`TIPOS`, `OPERACIONES`, `ATAJOS`) y no cadenas de `if`.
-Añadir una operación es añadir una entrada; la interfaz la muestra sola, porque
-construye su formulario a partir de `GET /herramientas/matrices/operaciones`.
+requisitos de cada operación, los parámetros que pide, las operaciones y los
+atajos del determinante son registros de datos (`TIPOS`, `PARAMETROS`,
+`OPERACIONES`, `ATAJOS`) y no cadenas de `if`. Añadir una operación es añadir
+una entrada; la interfaz la muestra sola, con sus campos, porque construye el
+formulario a partir de `GET /herramientas/matrices/operaciones`. Lo mismo vale
+para los métodos de resolver sistemas: `METODOS_POR_ORDEN` en `ecuaciones.py`,
+publicado en `GET /herramientas/ecuaciones/metodos`.
+
+El determinante se **calcula** siempre igual —desarrollo de Laplace,
+`determinante()`— y se **narra** como pida el usuario: por cofactores en
+cualquier línea o, si se elige, por Sarrus. Un test comprueba que las seis
+líneas dan el mismo valor y que la suma escrita en la narración, reevaluada,
+coincide con el cálculo.
 Las matrices son arrays de **numpy** con `dtype=object` y entradas `Fraction`:
 se aprovecha el álgebra vectorizada (`A @ B`, `A.T`, `np.trace`, `np.tril`)
 sin perder exactitud. `np.linalg.det` queda fuera a propósito: trabaja en coma
@@ -325,7 +352,11 @@ es texto en español que puede cambiar sin romper nada.
 | Tipos de matrices | Matrices | 7 | Matrices y determinantes, láminas 5 a 20 |
 | Operaciones con matrices | Matrices | 12 | Matrices y determinantes, láminas 21 a 34 |
 | Determinantes y regla de Cramer | Matrices | 13 | Matrices y determinantes, láminas 35 a 47 |
-| | | **114** | |
+| Cofactores, inversa y Cramer 3 × 3 | Matrices | 15 | Matrices y determinantes II, láminas 1 a 27 |
+| | | **129** | |
+
+«Matrices y determinantes» es el archivo `Matrices-Determinantes.pdf` de la
+asignatura; «Matrices y determinantes II», el `Matrices-determ.pdf`.
 
 Cada tarjeta guarda la lámina exacta de la que sale, de modo que cualquier duda
 se resuelve volviendo al PDF y no discutiendo con la aplicación.
@@ -333,16 +364,24 @@ se resuelve volviendo al PDF y no discutiendo con la aplicación.
 Cada unidad cubre lo que se enseñó y **solo** lo que se enseñó. La de
 ecuaciones: los tres métodos, la clasificación, la interpretación geométrica y
 el Δ de 2 × 2. La de matrices: tipos, operaciones, ecuaciones matriciales,
-determinantes de 2 × 2 y 3 × 3 con sus diez propiedades, y la regla de Cramer
-de 2 × 2, que entra como cuarto método del motor de ecuaciones. No hay Cramer
-de orden 3, ni **cálculo** de la matriz inversa, ni rangos: el PDF dice cuándo
-existe la inversa (det ≠ 0) y la usa para despejar, pero no enseña a
-calcularla. El criterio de qué entra es el temario, no lo que sea técnicamente
-posible.
+determinantes de 2 × 2 y 3 × 3 con sus diez propiedades, menores, cofactores,
+la adjunta, la inversa por la adjunta y la regla de Cramer de 2 × 2 y de
+3 × 3, que entra como cuarto método del motor de ecuaciones. No hay rangos, ni
+inversa por Gauss-Jordan, ni determinantes de orden mayor que 3 como
+operación: ninguno de los dos PDF los enseña. El criterio de qué entra es el
+temario, no lo que sea técnicamente posible.
 
-El PDF de matrices da valores de determinantes de 3 × 3 sin mostrar el método.
-El laboratorio los calcula y los narra con la **regla de Sarrus**, y la tarjeta
-correspondiente lo dice expresamente en vez de atribuírselo a la lámina.
+El primer PDF de matrices daba determinantes de 3 × 3 sin enseñar el método, y
+la v1.2.0 los narraba con la **regla de Sarrus**. El segundo PDF enseña el
+**desarrollo por cofactores**, así que desde la v1.3.0 esa es la narración por
+defecto; Sarrus sigue disponible como opción y su tarjeta dice que es un atajo
+que solo vale en 3 × 3.
+
+En Cramer de 3 × 3 hay un matiz que el laboratorio respeta: con D = 0, que Dₓ,
+D_y y D_z valgan también 0 **no** garantiza infinitas soluciones (tres planos
+paralelos lo desmienten), a diferencia del 2 × 2. Por eso el desarrollo no los
+calcula en ese caso y deja decidir a la eliminación; hay un test con ese
+contraejemplo.
 
 La carga es **idempotente**: se ejecuta en cada arranque, corrige el texto de
 las tarjetas del temario si cambió y **nunca toca una tarjeta creada por el
@@ -425,9 +464,11 @@ huérfano—, porque una disciplina que depende de acordarse no es una
 disciplina.
 
 `matriz` lleva la misma forma que el cuerpo de `POST /herramientas/matrices`:
-`{"operacion": "producto", "a": [[…]], "b": [[…]]}`, con `k` y `m` cuando la
-operación usa escalares. Las operaciones disponibles y lo que pide cada una
-están en `GET /herramientas/matrices/operaciones`.
+`{"operacion": "producto", "a": [[…]], "b": [[…]]}`, más los parámetros que
+pida la operación: `k` y `m` (escalares), `i` y `j` (fila y columna en base 1,
+para menores y cofactores) o `desarrollo` (`"fila 2"`, `"columna 3"`,
+`"Sarrus"`). Las operaciones disponibles y lo que pide cada una están en
+`GET /herramientas/matrices/operaciones`.
 
 Los coeficientes de `sistema` y las entradas de `matriz` se escriben como
 entero o como **texto**
@@ -473,6 +514,14 @@ matrices con incógnitas (láminas 7 y 8) se resuelven aparte con `sympy.solve`.
 Y la regla de Cramer se contrastó contra los 34 sistemas de 2 × 2 del banco de
 la carpeta de apuntes: coincide con la reducción en todos.
 
+La segunda parte añade sus propias comprobaciones: menores, matriz de
+cofactores, adjunta e inversa contra `sympy` (`minor`, `cofactor_matrix`,
+`adjugate`, `inv`) en cientos de matrices aleatorias; toda inversa calculada
+se multiplica por A y tiene que dar la identidad; Cramer de 3 × 3 coincide con
+la reducción en 300 sistemas al azar. Las 16 claves impresas en el segundo
+PDF se comprobaron con sympy antes de escribir una sola tarjeta, y estaban
+todas bien.
+
 Además, las funciones de conteo **rechazan regiones negativas**: un enunciado
 mal copiado no puede producir un diagrama imposible con una respuesta creíble.
 Y el motor de ecuaciones **rechaza los coeficientes con coma**: aceptar 0,333
@@ -495,8 +544,9 @@ exactamente cero saldría como 1e−17.
 
 El último job es el que justifica el pipeline: comprueba que el laboratorio
 **inicia sesión, sirve el temario de las cuatro unidades y calcula** —una
-tabla de verdad, un reparto de Venn, un sistema con fracciones, un sistema por
-Cramer y un determinante con fracciones— de punta a punta. Un
+tabla de verdad, un reparto de Venn, un sistema con fracciones, sistemas por
+Cramer de 2 × 2 y de 3 × 3, un determinante con fracciones y una inversa— de
+punta a punta. Un
 CI que solo lintea da falsa seguridad.
 
 La prueba de humo comprueba también que un sistema con coeficiente `1/2` vuelve
