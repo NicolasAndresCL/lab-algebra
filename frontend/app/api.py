@@ -196,6 +196,15 @@ def resolver_sistema(
     return _peticion("POST", "/herramientas/ecuaciones", sesion=sesion, json=cuerpo)
 
 
+def metodos_ecuaciones(sesion: Sesion) -> dict[int, list[str]]:
+    """Los métodos que enseña el curso para cada orden, según el backend.
+
+    JSON no tiene claves enteras: llegan como "2" y "3" y se convierten aquí.
+    """
+    metodos = _peticion("GET", "/herramientas/ecuaciones/metodos", sesion=sesion)
+    return {int(orden): lista for orden, lista in metodos.items()}
+
+
 def operaciones_matrices(sesion: Sesion) -> list[dict]:
     """Catálogo de operaciones con matrices, con el ejemplo de la lámina de cada una.
 

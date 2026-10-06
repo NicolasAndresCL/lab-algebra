@@ -234,7 +234,7 @@ def matriz_resuelta(datos: dict) -> None:
                 with ui.column().classes("gap-1"):
                     matriz_visual(filas, nombre)
                     ui.label(_tipos_en_texto(datos, nombre)).classes("text-xs lab-tenue")
-            for nombre, valor in datos.get("escalares", {}).items():
+            for nombre, valor in datos.get("parametros", {}).items():
                 ui.label(f"{nombre} = {valor}").classes("font-mono text-sm")
 
         with (

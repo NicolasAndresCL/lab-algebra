@@ -13,6 +13,7 @@ from app.api import (
     Sesion,
     equivalencia,
     imagen_venn,
+    metodos_ecuaciones,
     operaciones_matrices,
     operar_conjuntos,
     operar_matrices,
@@ -279,10 +280,11 @@ def _panel_venn(sesion: Sesion, tema: Tema) -> None:
     _alternar()
 
 
-# Los métodos que enseña la asignatura: los tres de la unidad de ecuaciones y
-# la regla de Cramer de la de matrices, que solo se enseñó para 2 × 2. No hay
-# Cramer de orden 3, ni matriz inversa, ni rangos: no se vieron en clase.
-METODOS = ["reducción", "sustitución", "igualación", "Cramer"]
+# Los métodos de cada orden NO se copian aquí: los publica el backend
+# (`GET /herramientas/ecuaciones/metodos`) desde `METODOS_POR_ORDEN`. Hasta la
+# v1.2.0 había una lista en este archivo y el 3 × 3 se forzaba a reducción;
+# cuando el curso enseñó Cramer de 3 × 3 habría que haber cambiado los dos
+# sitios a la vez.
 
 # La rejilla tiene siempre cuatro columnas —a, b, c y término— y en 2 × 2 se
 # oculta la de c. El término independiente va por tanto en el índice 3, no en
@@ -312,6 +314,11 @@ EJEMPLOS: dict[int, list[list[str]]] = {
 
 def _panel_ecuaciones(sesion: Sesion) -> None:
     resultado: ui.column
+    try:
+        metodos = metodos_ecuaciones(sesion)
+    except ErrorApi as error:
+        _mostrar_error(error, "")
+        return
 
     def leer(campo: ui.input) -> str:
         """Un hueco vacío es un coeficiente 0, no un error de escritura."""
@@ -372,13 +379,16 @@ def _panel_ecuaciones(sesion: Sesion) -> None:
         filas_ui.append(fila_ui)
 
     metodo = (
-        ui.select(METODOS, value="reducción", label="Método del desarrollo")
+        # Recalcula al elegir: sin esto el resultado de la pantalla seguía siendo
+        # el del método anterior hasta pulsar «Resolver».
+        ui.select(metodos[2], value="reducción", label="Método del desarrollo",
+                  on_change=lambda: calcular())
         .props("outlined dense")
         .classes("w-full sm:w-72")
     )
     aviso_metodo = ui.label(
-        "En 3 × 3 el desarrollo va por reducción (eliminación de Gauss-Jordan), "
-        "que es el método sistemático."
+        "En 3 × 3 el curso enseña reducción (Gauss-Jordan) y la regla de Cramer; "
+        "sustitución e igualación quedan para los 2 × 2."
     ).classes("text-xs lab-tenue")
 
     def alternar() -> None:
@@ -392,9 +402,10 @@ def _panel_ecuaciones(sesion: Sesion) -> None:
         for numero, fila in enumerate(campos):
             for columna, campo in enumerate(fila):
                 campo.set_value(ejemplo[numero][columna])
-        if hay_tres:
-            metodo.set_value("reducción")
-        metodo.set_enabled(not hay_tres)
+        disponibles = metodos[3 if hay_tres else 2]
+        metodo.set_options(
+            disponibles, value=metodo.value if metodo.value in disponibles else "reducción"
+        )
         aviso_metodo.set_visibility(hay_tres)
         calcular()
 
@@ -472,6 +483,32 @@ class EditorMatriz:
                 for i in range(m)]
 
 
+def _rotulo(parametro: dict) -> str:
+    """«el escalar k» → «escalar k»: la etiqueta del catálogo, sin el artículo."""
+    return parametro["etiqueta"].removeprefix("el ").removeprefix("la ")
+
+
+def _campo_parametro(parametro: dict, al_cambiar: Callable[[], None]) -> ui.element:
+    """El campo que corresponde a cada tipo de parámetro del catálogo.
+
+    Los desplegables recalculan al cambiar —elegir otra línea de desarrollo
+    tiene que cambiar el desarrollo en pantalla—; los campos de texto, con
+    Enter, como el resto del formulario.
+    """
+    if parametro["tipo"] == "opcion":
+        campo = ui.select(
+            parametro["opciones"], value=parametro["defecto"], label=_rotulo(parametro),
+            on_change=al_cambiar,
+        ).classes("w-44")
+    elif parametro["tipo"] == "indice":
+        campo = ui.select(
+            DIMENSIONES, value=1, label=_rotulo(parametro), on_change=al_cambiar
+        ).classes("w-32")
+    else:
+        campo = ui.input(_rotulo(parametro), value="1").classes("w-32")
+    return campo.props("outlined dense")
+
+
 def _panel_matrices(sesion: Sesion) -> None:
     resultado: ui.column
     try:
@@ -486,8 +523,9 @@ def _panel_matrices(sesion: Sesion) -> None:
         datos: dict = {"operacion": elegida["clave"], "a": editor_a.leer()}
         if elegida["usa_b"]:
             datos["b"] = editor_b.leer()
-        for nombre in elegida["escalares"]:
-            datos[nombre] = (escalares[nombre].value or "").strip() or "0"
+        for parametro in elegida["parametros"]:
+            valor = campos_parametro[parametro["nombre"]].value
+            datos[parametro["nombre"]] = valor.strip() if isinstance(valor, str) else valor
         try:
             respuesta = operar_matrices(sesion, datos)
         except ErrorApi as error:
@@ -505,10 +543,12 @@ def _panel_matrices(sesion: Sesion) -> None:
         if "b" in ejemplo:
             editor_b.cargar(ejemplo["b"])
         editor_b.contenedor.set_visibility(elegida["usa_b"])
-        for nombre, campo in escalares.items():
-            campo.set_visibility(nombre in elegida["escalares"])
+        pedidos = {parametro["nombre"] for parametro in elegida["parametros"]}
+        for nombre, campo in campos_parametro.items():
+            campo.set_visibility(nombre in pedidos)
             if nombre in ejemplo:
-                campo.set_value(str(ejemplo[nombre]))
+                valor = ejemplo[nombre]
+                campo.set_value(valor if isinstance(campo, ui.select) else str(valor))
         fuente.set_text(f"Ejemplo: {elegida['fuente']}.")
         calcular()
 
@@ -532,13 +572,22 @@ def _panel_matrices(sesion: Sesion) -> None:
     with ui.row().classes("w-full gap-8 flex-wrap items-start"):
         editor_a = EditorMatriz("A", calcular)
         editor_b = EditorMatriz("B", calcular)
+    # Un campo por parámetro distinto del catálogo, creado una vez y mostrado
+    # solo en las operaciones que lo piden: k y m para las combinaciones, i y j
+    # para menores y cofactores, la línea de desarrollo para el determinante.
+    parametros = {
+        parametro["nombre"]: parametro
+        for operacion_catalogo in catalogo.values()
+        for parametro in operacion_catalogo["parametros"]
+    }
     with ui.row().classes("gap-2"):
-        escalares = {
-            nombre: ui.input(nombre, value="1").props("outlined dense").classes("w-24")
-            for nombre in ("k", "m")
+        campos_parametro = {
+            nombre: _campo_parametro(parametro, lambda: calcular())
+            for nombre, parametro in parametros.items()
         }
-    for campo in escalares.values():
-        campo.on("keydown.enter", calcular)
+    for campo in campos_parametro.values():
+        if isinstance(campo, ui.input):
+            campo.on("keydown.enter", calcular)
     ui.button("Calcular", icon="play_arrow", on_click=calcular).props("no-caps")
     resultado = ui.column().classes("w-full gap-2")
     cargar_ejemplo()
