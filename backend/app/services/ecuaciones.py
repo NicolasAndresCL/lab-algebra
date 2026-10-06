@@ -18,15 +18,17 @@ Dos decisiones que no se pueden relajar:
   estudio, no una calculadora: una respuesta sin el camino no sirve para
   aprender a resolver el siguiente.
 
-Desde la unidad de matrices (v1.2.0) hay un cuarto método, la **regla de
-Cramer**, pero solo para 2 × 2: es como la enseñan las láminas 44 a 47 de
-«Matrices y determinantes». Igual que los otros tres, Cramer **narra**; la
-clasificación sigue saliendo de Gauss-Jordan.
+Desde la unidad de matrices hay un cuarto método, la **regla de Cramer**:
+de 2 × 2 desde la v1.2.0 (láminas 44 a 47 de «Matrices y determinantes») y de
+3 × 3 desde la v1.3.0 (láminas 12 a 16 de «Matrices y determinantes II»).
+Igual que los otros tres, Cramer **narra**; la clasificación sigue saliendo de
+Gauss-Jordan. Los determinantes de 3 × 3 de Cramer se narran con
+`matrices.desarrollo_por_cofactores`, el mismo método que enseña el curso.
 
-Lo que este módulo **no** hace, a propósito: Cramer de orden 3, matriz
-inversa y rangos. No se enseñaron en clase, y meterlos desalinearía el
-laboratorio del curso. Los determinantes de matrices sueltas viven en
-`matrices.py`; aquí solo aparecen el Δ de 2 × 2 y los Dₓ, D_y de Cramer.
+Qué métodos admite cada orden está en `METODOS_POR_ORDEN`: sustitución e
+igualación se enseñaron solo en 2 × 2. Lo que este módulo **no** hace, a
+propósito: rangos, ni la resolución por matriz inversa. No se enseñaron como
+método de resolver sistemas.
 """
 
 from __future__ import annotations
@@ -35,8 +37,10 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 from typing import Literal
 
+import numpy as np
+
 from app.excepciones import SistemaInvalidoError
-from app.services import numeros
+from app.services import matrices, numeros
 from app.services.numeros import MENOS, Coeficiente, formatear
 
 Clasificacion = Literal[
@@ -47,6 +51,14 @@ Clasificacion = Literal[
 
 METODOS: tuple[str, ...] = ("reducción", "sustitución", "igualación", "Cramer")
 METODO_POR_DEFECTO = "reducción"
+
+# Qué métodos se enseñaron para cada orden. La API lo publica tal cual
+# (`GET /herramientas/ecuaciones/metodos`) y la interfaz arma su selector desde
+# ahí: añadir un método a un orden es una línea aquí.
+METODOS_POR_ORDEN: dict[int, tuple[str, ...]] = {
+    2: METODOS,
+    3: ("reducción", "Cramer"),
+}
 NOMBRES_POR_DEFECTO = ("x", "y", "z")
 ORDENES_ADMITIDOS = (2, 3)
 
@@ -580,6 +592,45 @@ def _pasos_cramer(sistema: Sistema, clasificacion: str, delta: Fraction) -> list
     ]
 
 
+def _pasos_cramer_3x3(sistema: Sistema, clasificacion: str) -> list[str]:
+    """Regla de Cramer de 3 × 3 (láminas 12 a 16 de la segunda parte).
+
+    Cada determinante se narra desarrollando por la primera fila, como en la
+    lámina 14. Con D = 0 **no** se calculan Dₓ, D_y y D_z: a diferencia del
+    2 × 2, en 3 × 3 que los tres valgan 0 no garantiza infinitas soluciones
+    (hay sistemas incompatibles con D = Dₓ = D_y = D_z = 0), así que decirlo
+    sería enseñar una regla falsa. Decide la eliminación, como siempre.
+    """
+    coeficientes = np.array([fila[:3] for fila in sistema.matriz], dtype=object)
+    terminos = np.array([fila[3] for fila in sistema.matriz], dtype=object)
+    cabecera = [f"({i + 1})  {texto}" for i, texto in enumerate(sistema.como_texto())]
+    delta, pasos_d = matrices.desarrollo_por_cofactores(coeficientes, "fila 1", "D")
+    pasos = [*cabecera, "D es el determinante de los coeficientes.", *pasos_d]
+    if delta == 0:
+        return [
+            *pasos,
+            "D = 0: la regla de Cramer no es aplicable. El sistema es incompatible o "
+            "tiene infinitas soluciones (lámina 16), y lo decide la eliminación: en "
+            "3 × 3, que Dₓ, D_y y D_z valgan 0 no basta para asegurar infinitas "
+            "soluciones.",
+        ]
+    soluciones = []
+    for k, nombre in enumerate(sistema.incognitas):
+        reemplazada = coeficientes.copy()
+        reemplazada[:, k] = terminos
+        etiqueta = f"D{_sub(nombre)}"
+        valor, pasos_k = matrices.desarrollo_por_cofactores(reemplazada, "fila 1", etiqueta)
+        pasos += [
+            f"{etiqueta}: la columna de {nombre} se cambia por los términos independientes.",
+            *pasos_k,
+        ]
+        soluciones.append(
+            f"{nombre} = {etiqueta} / D = {_division(valor, delta)} = "
+            f"{formatear(valor / delta)}."
+        )
+    return [*pasos, *soluciones]
+
+
 # Subíndices para nombrar Dₓ, D_y. Unicode no tiene subíndice para todas las
 # letras (no hay «y» ni «z» subíndice), así que las que faltan van con guion bajo.
 _SUBINDICES = {"x": "ₓ", "a": "ₐ", "e": "ₑ", "o": "ₒ"}
@@ -606,15 +657,14 @@ def resolver(sistema: Sistema, metodo: str | None = None) -> Solucion:
             f"Elige entre: {', '.join(METODOS)}."
         )
     elegido = metodo or METODO_POR_DEFECTO
-    if sistema.orden == 3 and elegido != "reducción":
+    orden = sistema.orden
+    if elegido not in METODOS_POR_ORDEN[orden]:
         raise SistemaInvalidoError(
-            "En 3 × 3 el laboratorio desarrolla por reducción, que es el método "
-            "sistemático (eliminación de Gauss-Jordan). Sustitución, igualación y "
-            "Cramer quedan para los sistemas de 2 × 2: así los enseña el curso."
+            f"En {orden} × {orden} el curso enseña {' y '.join(METODOS_POR_ORDEN[orden])}. "
+            f"Sustitución e igualación quedan para los sistemas de 2 × 2."
         )
 
-    orden = sistema.orden
-    narrar_gauss = sistema.orden == 3 or metodo is None
+    narrar_gauss = metodo is None or (orden == 3 and elegido == "reducción")
     escalonada = _escalonar(sistema, narrar=narrar_gauss)
 
     if any(_fila_contradictoria(fila, orden) for fila in escalonada.filas):
@@ -644,12 +694,15 @@ def resolver(sistema: Sistema, metodo: str | None = None) -> Solucion:
 
     delta = determinante_2x2(sistema) if orden == 2 else None
 
-    if orden == 2 and metodo is not None:
+    if metodo is not None and (orden == 2 or elegido == "Cramer"):
         generador = {
             "reducción": lambda: _pasos_reduccion(sistema, clasificacion, delta),
             "sustitución": lambda: _pasos_sustitucion(sistema, clasificacion),
             "igualación": lambda: _pasos_igualacion(sistema, clasificacion),
-            "Cramer": lambda: _pasos_cramer(sistema, clasificacion, delta),
+            "Cramer": lambda: (
+                _pasos_cramer(sistema, clasificacion, delta) if orden == 2
+                else _pasos_cramer_3x3(sistema, clasificacion)
+            ),
         }[elegido]
         pasos = generador()
     else:

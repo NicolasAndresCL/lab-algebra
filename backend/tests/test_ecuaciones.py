@@ -108,11 +108,15 @@ class TestValidacion:
         assert "sustitución" in str(error.value)
         assert "Cramer" in str(error.value)
 
-    @pytest.mark.parametrize("metodo", ["igualación", "Cramer"])
-    def test_en_3x3_solo_se_desarrolla_por_reduccion(self, metodo: str) -> None:
-        """Cramer de orden 3 no se enseñó: el PDF solo lo da para 2 × 2."""
-        with pytest.raises(SistemaInvalidoError, match="Cramer quedan para"):
+    @pytest.mark.parametrize("metodo", ["igualación", "sustitución"])
+    def test_en_3x3_no_se_narra_por_igualacion_ni_sustitucion(self, metodo: str) -> None:
+        """En 3 × 3 el curso enseña reducción y, desde «Matrices y determinantes II», Cramer."""
+        with pytest.raises(SistemaInvalidoError, match="quedan para los sistemas de 2 × 2"):
             resolver_datos([[1, 1, 1, 3], [1, 2, 1, 4], [1, 1, 2, 5]], metodo=metodo)
+
+    def test_los_metodos_por_orden_son_los_del_curso(self) -> None:
+        assert ecuaciones.METODOS_POR_ORDEN[2] == ecuaciones.METODOS
+        assert ecuaciones.METODOS_POR_ORDEN[3] == ("reducción", "Cramer")
 
     def test_el_determinante_es_cosa_de_los_2x2(self) -> None:
         sistema = Sistema.desde_datos([[1, 1, 1, 3], [1, 2, 1, 4], [1, 1, 2, 5]])
@@ -351,3 +355,51 @@ def test_el_diccionario_de_un_indeterminado_lleva_la_familia() -> None:
     assert datos["parametros"] == ["y"]
     assert datos["formulas"] == {"x": "−(4/7)y"}
     assert datos["valores"] == {}
+
+
+# --------------------------------------------------------------------------
+# Cramer de 3 × 3 («Matrices y determinantes II», láminas 12 a 16)
+# --------------------------------------------------------------------------
+LAMINA_13 = [[2, 1, -1, 3], [-1, 2, 4, -3], [1, -2, -3, 4]]
+
+
+def test_cramer_3x3_reproduce_la_lamina() -> None:
+    """D = 5, Dₓ = 15, D_y = −10, D_z = 5, impresos en las láminas 14 y 15."""
+    solucion = resolver_datos(LAMINA_13, metodo="Cramer")
+    assert solucion.metodo == "Cramer"
+    assert solucion.valores == {"x": F(3), "y": F(-2), "z": F(1)}
+    finales = [p for p in solucion.pasos if " = " in p and p.split(" = ")[0] in
+               {"D", "Dₓ", "D_y", "D_z"}]
+    assert [f.rsplit(" = ", 1)[1] for f in finales] == ["5.", "15.", "−10.", "5."]
+    assert "x = Dₓ / D = (15) / (5) = 3." in solucion.pasos
+
+
+def test_cramer_3x3_con_d_cero_no_inventa_una_regla() -> None:
+    """Contraejemplo: D = Dₓ = D_y = D_z = 0 y aun así el sistema es incompatible.
+
+    Tres planos paralelos x + y + z = 1, 2, 3. En 2 × 2, «los tres
+    determinantes nulos» sí implica infinitas soluciones; en 3 × 3 no. Por eso
+    el desarrollo no calcula Dₓ, D_y y D_z cuando D = 0 y deja decidir a la
+    eliminación.
+    """
+    solucion = resolver_datos([[1, 1, 1, 1], [1, 1, 1, 2], [1, 1, 1, 3]], metodo="Cramer")
+    assert solucion.clasificacion == "incompatible"
+    assert any("no basta" in paso for paso in solucion.pasos)
+    assert not any(paso.startswith("Dₓ:") for paso in solucion.pasos)
+
+
+def test_cramer_3x3_coincide_con_la_reduccion_en_sistemas_al_azar() -> None:
+    import random
+
+    rng = random.Random(20261006)
+    determinados = 0
+    for _ in range(300):
+        matriz = [[rng.randint(-5, 5) for _ in range(4)] for _ in range(3)]
+        if all(v == 0 for fila in matriz for v in fila[:3]):
+            continue
+        cramer = resolver_datos(matriz, metodo="Cramer")
+        reduccion = resolver_datos(matriz, metodo="reducción")
+        assert cramer.clasificacion == reduccion.clasificacion
+        assert cramer.valores == reduccion.valores
+        determinados += cramer.clasificacion == "compatible determinado"
+    assert determinados > 200
