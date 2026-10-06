@@ -72,7 +72,7 @@ class TestEntrada:
 
     def test_operacion_desconocida(self) -> None:
         with pytest.raises(MatrizInvalidaError, match="Elige entre"):
-            operar("inversa", [[1, 2], [3, 4]])
+            operar("rango", [[1, 2], [3, 4]])
 
     def test_falta_b(self) -> None:
         with pytest.raises(MatrizInvalidaError, match="segunda matriz"):
@@ -115,16 +115,20 @@ class TestNoDefinida:
         assert motivo in resultado.pasos[0]
         assert "no está definida" in resultado.respuesta()
 
-    def test_la_formula_del_determinante_tambien_se_niega_fuera_del_temario(self) -> None:
-        with pytest.raises(MatrizInvalidaError):
-            matrices.determinante(np.array([[F(1)] * 4] * 4, dtype=object))
+    def test_la_formula_vale_para_cualquier_orden_aunque_el_temario_no(self) -> None:
+        """Laplace es general; lo que limita a 2 × 2 y 3 × 3 son los `Requisito`."""
+        rng = random.Random(SEMILLA)
+        filas = _aleatoria(rng, 4, 4)
+        det = _sympy(filas).det()
+        assert matrices.determinante(np.array(filas, dtype=object)) == F(int(det.p), int(det.q))
+        assert operar("determinante", filas).definida is False
 
 
 class TestSalida:
     def test_como_dict_escribe_fracciones_con_el_menos_tipografico(self) -> None:
         datos = operar("escalar", [[1, -2]], k="1/2").como_dict()
         assert datos["resultado"] == [["1/2", "−1"]]
-        assert datos["escalares"] == {"k": "1/2"}
+        assert datos["parametros"] == {"k": "1/2"}
         assert datos["invertible"] is None
         assert datos["respuesta"] == "k·A = [1/2 −1]."
 
@@ -256,7 +260,7 @@ class TestContraSympy:
             assert operar("suma", a, b).matriz.tolist() == _a_fracciones(sa + sb)
             assert operar("resta", a, b).matriz.tolist() == _a_fracciones(sa - sb)
             assert operar("escalar", a, k=k).matriz.tolist() == _a_fracciones(sk * sa)
-            assert operar("combinacion", a, b, k, c).matriz.tolist() == _a_fracciones(
+            assert operar("combinacion", a, b, k=k, m=c).matriz.tolist() == _a_fracciones(
                 sk * sa + sc * sb
             )
 
@@ -374,7 +378,9 @@ class TestPropiedadesDelDeterminante:
 
     def test_sarrus_narra_las_seis_diagonales(self) -> None:
         """Lámina 39: |1 0 −2; 3 1 1; 3 2 0| = −8."""
-        pasos = operar("determinante", [[1, 0, -2], [3, 1, 1], [3, 2, 0]]).pasos
+        pasos = operar(
+            "determinante", [[1, 0, -2], [3, 1, 1], [3, 2, 0]], desarrollo="Sarrus"
+        ).pasos
         assert pasos[1] == "Bajan: (1)(1)(0) + (0)(1)(3) + (−2)(3)(2) = −12."
         assert pasos[3] == "det A = −12 − (−4) = −8."
 
@@ -434,3 +440,148 @@ def test_cramer_con_d_cero_distingue_bien_los_dos_casos() -> None:
         esperada = "incompatible" if (delta_x, delta_y) != (0, 0) else "compatible indeterminado"
         assert solucion.clasificacion == esperada, (a, b, s, c, d, t)
     assert singulares > 500
+
+
+
+# --------------------------------------------------------------------------
+# «Matrices y determinantes II»: menores, cofactores, adjunta, inversa
+# --------------------------------------------------------------------------
+LAMINA_3 = [[2, -1, 3], [-2, 5, 1], [0, 6, -9]]
+LAMINA_10 = [[3, 4, -1], [4, 6, 2], [8, -2, 3]]
+
+
+class TestParametros:
+    def test_el_catalogo_publica_los_parametros_de_cada_operacion(self) -> None:
+        catalogo = {op.clave: op.como_dict() for op in OPERACIONES.values()}
+        assert [p["nombre"] for p in catalogo["menor"]["parametros"]] == ["i", "j"]
+        desarrollo = catalogo["determinante"]["parametros"][0]
+        assert desarrollo["tipo"] == "opcion" and desarrollo["defecto"] == "fila 1"
+        assert "Sarrus" in desarrollo["opciones"]
+
+    @pytest.mark.parametrize(
+        ("parametros", "mensaje"),
+        [
+            ({"i": 4, "j": 1}, "entre 1 y 3"),
+            ({"i": "dos", "j": 1}, "no es un número"),
+            ({"j": 1}, "Falta la fila i"),
+        ],
+    )
+    def test_los_indices_se_validan_contra_el_orden_de_a(self, parametros, mensaje) -> None:
+        with pytest.raises(MatrizInvalidaError, match=mensaje):
+            operar("menor", LAMINA_3, **parametros)
+
+    def test_una_linea_de_desarrollo_inventada_se_rechaza(self) -> None:
+        with pytest.raises(MatrizInvalidaError, match="Elige entre"):
+            operar("determinante", LAMINA_10, desarrollo="diagonal")
+
+    def test_los_indices_llegan_tambien_como_texto(self) -> None:
+        """Desde un formulario todo es texto: «1» vale lo mismo que 1."""
+        assert operar("menor", LAMINA_3, i="1", j="2").valor == 18
+
+
+class TestMenoresYCofactores:
+    def test_laminas_3_y_4(self) -> None:
+        assert operar("menor", LAMINA_3, i=1, j=2).valor == 18
+        assert operar("menor", LAMINA_3, i=2, j=3).valor == 12
+        assert operar("cofactor", LAMINA_3, i=1, j=2).valor == -18
+        assert operar("cofactor", LAMINA_3, i=2, j=3).respuesta() == "A₂₃ = −12."
+
+    def test_en_2x2_el_menor_es_el_numero_que_queda(self) -> None:
+        resultado = operar("menor", [[2, -4], [1, 3]], i=1, j=1)
+        assert resultado.valor == 3
+        assert "M₁₁ = 3." in resultado.pasos
+
+    def test_coinciden_con_sympy(self) -> None:
+        rng = random.Random(SEMILLA)
+        for _ in range(100):
+            n = rng.choice((2, 3))
+            filas = _aleatoria(rng, n, n)
+            s = _sympy(filas)
+            for i in range(n):
+                for j in range(n):
+                    assert operar("menor", filas, i=i + 1, j=j + 1).valor == F(
+                        str(s.minor(i, j))
+                    )
+            assert operar("cofactores", filas).matriz.tolist() == _a_fracciones(
+                s.cofactor_matrix()
+            )
+            assert operar("adjunta", filas).matriz.tolist() == _a_fracciones(s.adjugate())
+
+
+class TestDesarrolloPorCofactores:
+    @pytest.mark.parametrize("linea", matrices.LINEAS)
+    def test_cualquier_linea_da_el_mismo_determinante(self, linea: str) -> None:
+        """Láminas 10 y 11: 138 por la fila 1 y 138 por la columna 3."""
+        resultado = operar("determinante", LAMINA_10, desarrollo=linea)
+        assert resultado.valor == 138
+        assert resultado.pasos[-2].endswith("= 138.")
+
+    def test_la_narracion_suma_lo_mismo_que_la_formula_en_matrices_al_azar(self) -> None:
+        """La última línea de la narración es una suma escrita: se reevalúa y se compara."""
+        rng = random.Random(SEMILLA)
+        for _ in range(200):
+            a = np.array(_aleatoria(rng, 3, 3), dtype=object)
+            linea = rng.choice(matrices.LINEAS)
+            valor, pasos = matrices.desarrollo_por_cofactores(a, linea)
+            assert valor == matrices.determinante(a)
+            terminos = [
+                [F(f.strip("()").replace("−", "-")) for f in termino.split("·")]
+                for termino in pasos[-1].split(" = ")[1].split(" + ") if termino != "0"
+            ]
+            assert sum((x * y for x, y in terminos), F(0)) == valor
+
+    def test_un_cero_en_la_linea_se_salta(self) -> None:
+        """Lámina 6: desarrollando por la fila 2, el 0 de a₂₂ ahorra un menor."""
+        resultado = operar("determinante", [[2, -3, 5], [1, 0, 4], [3, -3, 9]],
+                           desarrollo="fila 2")
+        assert resultado.valor == 0
+        assert any(paso.startswith("a₂₂ = 0") for paso in resultado.pasos)
+
+
+class TestInversa:
+    def test_lamina_25(self) -> None:
+        resultado = operar("inversa", [[1, 2, 0], [0, 1, 1], [1, 0, 3]])
+        quinto = F(1, 5)
+        assert resultado.matriz.tolist() == [
+            [3 * quinto, -6 * quinto, 2 * quinto],
+            [quinto, 3 * quinto, -quinto],
+            [-quinto, 2 * quinto, quinto],
+        ]
+        assert resultado.pasos[-1] == "Comprobación: A·A⁻¹ = I ✓"
+        assert resultado.invertible is True
+
+    def test_lamina_27_con_determinante_1(self) -> None:
+        resultado = operar("inversa", [[1, 2, 3], [0, 1, 4], [5, 6, 0]])
+        assert resultado.matriz.tolist() == _a_fracciones(
+            sympy.Matrix([[-24, 18, 5], [20, -15, -4], [-5, 4, 1]])
+        )
+
+    def test_lamina_20_en_2x2(self) -> None:
+        """La lámina 20 no imprime la respuesta: (1/10)·[3 4; −1 2]."""
+        resultado = operar("inversa", [[2, -4], [1, 3]])
+        assert resultado.respuesta() == "A⁻¹ = [3/10 2/5; −1/10 1/5]."
+        assert "A⁻¹ = (1/10)·[3 4; −1 2]." in resultado.pasos
+
+    def test_una_singular_no_tiene_inversa_y_no_es_un_error(self) -> None:
+        resultado = operar("inversa", [[2, 1, 1], [2, 1, 1], [0, -3, 1]])
+        assert resultado.definida is False
+        assert resultado.respuesta() == "A⁻¹ no existe para esta matriz."
+        assert resultado.invertible is False
+        assert "singular" in resultado.pasos[0]
+
+    def test_coincide_con_sympy_y_da_la_identidad(self) -> None:
+        rng = random.Random(SEMILLA)
+        invertibles = 0
+        for _ in range(200):
+            n = rng.choice((2, 3))
+            filas = _aleatoria(rng, n, n)
+            resultado = operar("inversa", filas)
+            s = _sympy(filas)
+            assert resultado.definida == (s.det() != 0)
+            if resultado.definida:
+                invertibles += 1
+                assert resultado.matriz.tolist() == _a_fracciones(s.inv())
+                assert np.array_equal(
+                    np.array(filas, dtype=object) @ resultado.matriz, np.eye(n, dtype=int)
+                )
+        assert invertibles > 150
