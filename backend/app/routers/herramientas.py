@@ -117,6 +117,16 @@ def imagen_venn(datos: VennEntrada, _: UsuarioDep) -> Response:
     return Response(content=png, media_type="image/png")
 
 
+@router.get(
+    "/ecuaciones/metodos",
+    response_model=dict[int, list[str]],
+    summary="Métodos de resolución que enseña el curso, por orden del sistema",
+)
+def metodos_ecuaciones(_: UsuarioDep) -> dict[int, list[str]]:
+    """La interfaz arma su selector de métodos desde aquí, no desde una copia."""
+    return {orden: list(metodos) for orden, metodos in ecuaciones.METODOS_POR_ORDEN.items()}
+
+
 @router.post(
     "/ecuaciones",
     response_model=SistemaSalida,
@@ -164,5 +174,6 @@ def operar_matrices(datos: MatrizEntrada, _: UsuarioDep) -> MatrizSalida:
     queda para lo que está mal escrito (filas de distinta longitud, un número
     ilegible, una operación que no existe).
     """
-    resultado = matrices.operar(datos.operacion, datos.a, datos.b, datos.k, datos.m)
+    parametros = datos.model_dump(exclude={"operacion", "a", "b"}, exclude_none=True)
+    resultado = matrices.operar(datos.operacion, datos.a, datos.b, **parametros)
     return MatrizSalida(**resultado.como_dict())

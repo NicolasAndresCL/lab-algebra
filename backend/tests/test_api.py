@@ -56,13 +56,13 @@ class TestAutenticacion:
 
 
 class TestMazos:
-    def test_lista_los_trece_mazos_con_sus_conteos(self, autenticado: TestClient) -> None:
-        """Tres mazos por unidad en lógica, conjuntos y ecuaciones, y cuatro en matrices."""
+    def test_lista_los_catorce_mazos_con_sus_conteos(self, autenticado: TestClient) -> None:
+        """Tres mazos por unidad en lógica, conjuntos y ecuaciones, y cinco en matrices."""
         mazos = autenticado.get("/api/v1/mazos").json()
-        assert len(mazos) == 13
+        assert len(mazos) == 14
         assert all(m["total_tarjetas"] > 0 for m in mazos)
-        assert sum(m["total_tarjetas"] for m in mazos) >= 110
-        assert sum(m["unidad"] == "Matrices" for m in mazos) == 4
+        assert sum(m["total_tarjetas"] for m in mazos) >= 125
+        assert sum(m["unidad"] == "Matrices" for m in mazos) == 5
 
     def test_tarjetas_de_un_mazo_vienen_ordenadas(self, autenticado: TestClient) -> None:
         mazo = autenticado.get("/api/v1/mazos").json()[0]
@@ -332,6 +332,43 @@ class TestHerramientas:
         assert cuerpo["metodo"] == "Cramer"
         assert cuerpo["valores"] == {"x": "2", "y": "1"}
         assert any(paso.startswith("Dₓ = ") for paso in cuerpo["pasos"])
+
+    def test_metodos_de_ecuaciones_por_orden(self, autenticado: TestClient) -> None:
+        metodos = autenticado.get("/api/v1/herramientas/ecuaciones/metodos").json()
+        assert metodos["3"] == ["reducción", "Cramer"]
+        assert "sustitución" in metodos["2"]
+
+    def test_sistema_3x3_por_cramer(self, autenticado: TestClient) -> None:
+        """Láminas 13 a 16 de «Matrices y determinantes II»."""
+        cuerpo = autenticado.post(
+            "/api/v1/herramientas/ecuaciones",
+            json={"matriz": [[2, 1, -1, 3], [-1, 2, 4, -3], [1, -2, -3, 4]],
+                  "metodo": "Cramer"},
+        ).json()
+        assert cuerpo["valores"] == {"x": "3", "y": "−2", "z": "1"}
+
+    def test_inversa_y_menor_con_sus_parametros(self, autenticado: TestClient) -> None:
+        inversa = autenticado.post(
+            "/api/v1/herramientas/matrices",
+            json={"operacion": "inversa", "a": [[1, 2, 0], [0, 1, 1], [1, 0, 3]]},
+        ).json()
+        assert inversa["resultado"][0] == ["3/5", "−6/5", "2/5"]
+        assert inversa["invertible"] is True
+        menor = autenticado.post(
+            "/api/v1/herramientas/matrices",
+            json={"operacion": "menor", "a": [[2, -1, 3], [-2, 5, 1], [0, 6, -9]],
+                  "i": 1, "j": 2},
+        ).json()
+        assert menor["valor"] == "18"
+        assert menor["parametros"] == {"i": "1", "j": "2"}
+
+    def test_un_indice_fuera_de_la_matriz_da_422(self, autenticado: TestClient) -> None:
+        respuesta = autenticado.post(
+            "/api/v1/herramientas/matrices",
+            json={"operacion": "cofactor", "a": [[1, 2], [3, 4]], "i": 3, "j": 1},
+        )
+        assert respuesta.status_code == 422
+        assert respuesta.json()["error"]["codigo"] == "matriz_invalida"
 
     def test_catalogo_de_operaciones_con_matrices(self, autenticado: TestClient) -> None:
         """La interfaz se construye desde aquí: cada operación trae su ejemplo."""

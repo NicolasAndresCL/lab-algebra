@@ -235,9 +235,10 @@ Numero = int | str
 class MatrizEntrada(BaseModel):
     """Una operación de la unidad de matrices: `operacion`, A y lo que pida.
 
-    `b`, `k` y `m` son opcionales porque dependen de la operación (la traza
-    solo usa A; la combinación lineal usa A, B, k y m). El catálogo de
-    `GET /herramientas/matrices/operaciones` dice qué usa cada una.
+    Todo lo demás es opcional porque depende de la operación: la traza solo
+    usa A; la combinación lineal, A, B, k y m; el menor, A, i y j; el
+    determinante admite la línea de `desarrollo`. El catálogo de
+    `GET /herramientas/matrices/operaciones` dice qué pide cada una.
     """
 
     operacion: str = Field(min_length=1, max_length=40)
@@ -245,6 +246,9 @@ class MatrizEntrada(BaseModel):
     b: list[list[Numero]] | None = Field(default=None, min_length=1, max_length=4)
     k: Numero | None = None
     m: Numero | None = None
+    i: Numero | None = None
+    j: Numero | None = None
+    desarrollo: str | None = Field(default=None, max_length=20)
 
 
 class MatrizSalida(BaseModel):
@@ -254,7 +258,7 @@ class MatrizSalida(BaseModel):
     definida: bool
     operandos: dict[str, list[list[str]]]
     ordenes: dict[str, str]
-    escalares: dict[str, str]
+    parametros: dict[str, str]
     resultado: list[list[str]] | None
     valor: str | None
     pasos: list[str]
@@ -263,12 +267,20 @@ class MatrizSalida(BaseModel):
     respuesta: str
 
 
+class ParametroSalida(BaseModel):
+    nombre: str
+    etiqueta: str
+    tipo: str
+    opciones: list[str]
+    defecto: str | None
+
+
 class OperacionMatricesSalida(BaseModel):
     clave: str
     nombre: str
     notacion: str
     usa_b: bool
-    escalares: list[str]
+    parametros: list[ParametroSalida]
     ejemplo: dict
     fuente: str
 
