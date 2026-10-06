@@ -1,6 +1,6 @@
 [project]
 name = "lab-algebra-frontend"
-version = "1.2.0"
+version = "1.3.0"
 description = "Interfaz NiceGUI del laboratorio de tarjetas de Álgebra."
 requires-python = ">=3.12"
 

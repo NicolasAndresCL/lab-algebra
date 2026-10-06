@@ -74,8 +74,8 @@ mazos=$(curl -fsS "${autorizado[@]}" "$API/api/v1/mazos" 2>/dev/null || echo '[]
 total=$(echo "$mazos" | grep -o '"total_tarjetas":[0-9]*' | cut -d: -f2 \
         | awk '{suma += $1} END {print suma + 0}')
 
-comprobar "el temario está cargado (110 tarjetas o más; hay ${total:-0})" \
-    bash -c "[ '${total:-0}' -ge 110 ]"
+comprobar "el temario está cargado (125 tarjetas o más; hay ${total:-0})" \
+    bash -c "[ '${total:-0}' -ge 125 ]"
 
 # Contar tarjetas no basta: un mazo entero podría faltar y el total seguir
 # alto. Las unidades nuevas tienen que estar sembradas, no «alguna».
@@ -83,8 +83,8 @@ mazos_ecuaciones=$(echo "$mazos" | grep -o '"unidad": *"Ecuaciones"' | wc -l)
 comprobar "la unidad de ecuaciones está sembrada (3 mazos; hay ${mazos_ecuaciones:-0})" \
     bash -c "[ '${mazos_ecuaciones:-0}' -ge 3 ]"
 mazos_matrices=$(echo "$mazos" | grep -o '"unidad": *"Matrices"' | wc -l)
-comprobar "la unidad de matrices está sembrada (4 mazos; hay ${mazos_matrices:-0})" \
-    bash -c "[ '${mazos_matrices:-0}' -ge 4 ]"
+comprobar "la unidad de matrices está sembrada (5 mazos; hay ${mazos_matrices:-0})" \
+    bash -c "[ '${mazos_matrices:-0}' -ge 5 ]"
 
 # --- 4. Motores de cálculo ----------------------------------------------
 # Se manda con los alias ASCII a propósito: así se comprueba de paso que el
@@ -147,6 +147,18 @@ comprobar "el determinante con fracciones da 19/6 exacto" \
     bash -c "echo '$determinante' | grep -q '19/6'"
 comprobar "y dice que la matriz admite inversa" \
     bash -c "echo '$determinante' | grep -q '\"invertible\": *true'"
+
+# Cramer de 3 × 3 y la inversa por la adjunta («Matrices y determinantes II»).
+cramer3=$(curl -fsS -X POST "$API/api/v1/herramientas/ecuaciones" \
+    "${autorizado[@]}" -H 'Content-Type: application/json' \
+    -d '{"matriz":[[2,1,-1,3],[-1,2,4,-3],[1,-2,-3,4]],"metodo":"Cramer"}' 2>/dev/null || echo '{}')
+comprobar "Cramer resuelve el 3 × 3 de la lámina 13 con x = 3" \
+    bash -c "echo '$cramer3' | grep -q '\"x\": *\"3\"'"
+inversa=$(curl -fsS -X POST "$API/api/v1/herramientas/matrices" \
+    "${autorizado[@]}" -H 'Content-Type: application/json' \
+    -d '{"operacion":"inversa","a":[[1,2,0],[0,1,1],[1,0,3]]}' 2>/dev/null || echo '{}')
+comprobar "la inversa de la lámina 25 sale en fracciones exactas (3/5)" \
+    bash -c "echo '$inversa' | grep -q '\"3/5\"'"
 
 # Un producto no definido tampoco es un error: es una respuesta de la unidad.
 no_definido=$(curl -fsS -X POST "$API/api/v1/herramientas/matrices" \
