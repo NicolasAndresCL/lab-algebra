@@ -1,7 +1,7 @@
 # Dependencias de desarrollo del backend (incluye las de ejecución).
 # Generado con pip freeze — no editar a mano.
 -r requirements.txt
-coverage==7.16.0
+coverage==7.16.2
 httpcore==1.0.9
 httpx==0.28.1
 iniconfig==2.3.0
@@ -10,5 +10,5 @@ pluggy==1.6.0
 Pygments==2.21.0
 pytest==9.1.1
 pytest-cov==7.1.0
-ruff==0.16.5
+ruff==0.16.10
 sympy==1.14.0
