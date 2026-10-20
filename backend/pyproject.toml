@@ -1,6 +1,6 @@
 [project]
 name = "lab-algebra-backend"
-version = "1.3.0"
+version = "1.4.0"
 description = "API de tarjetas de memorización de Álgebra (lógica, conjuntos, sistemas de ecuaciones y matrices)."
 requires-python = ">=3.12"
 
