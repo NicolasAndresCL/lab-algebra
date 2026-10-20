@@ -63,7 +63,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: lab-algebra-api:1.1.0
+    image: lab-algebra-api:1.4.0
     container_name: lab-algebra-api
     restart: unless-stopped
     depends_on:
@@ -88,7 +88,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: lab-algebra-web:1.1.0
+    image: lab-algebra-web:1.4.0
     # Este es el contenedor que se abre en el navegador, así que se queda con
     # el nombre corto del proyecto.
     container_name: lab-algebra

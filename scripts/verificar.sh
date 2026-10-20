@@ -56,6 +56,14 @@ echo
 echo "1. Lint"
 ejecutar "ruff — backend" "$PY" -m ruff check backend
 ejecutar "ruff — frontend" "$PY" -m ruff check frontend
+# Mismas variables de mentira que el CI: solo se valida la fusión de los dos
+# archivos y que el override del servidor no publique ningún puerto.
+ejecutar "compose.traefik.yml válido y sin puertos publicados" bash -c '
+    export POSTGRES_PASSWORD=ci SECRET_KEY=ci STORAGE_SECRET=ci \
+        LAB_ALGEBRA_HOST=algebra.ci.example TRAEFIK_NETWORK=ci LAB_ALGEBRA_BASIC_AUTH=ci:x
+    f=(-f docker-compose.yml -f compose.traefik.yml)
+    docker compose "${f[@]}" config --quiet \
+        && [ "$(docker compose "${f[@]}" config | grep -c published)" -eq 0 ]'
 
 echo
 echo "2. Tests"

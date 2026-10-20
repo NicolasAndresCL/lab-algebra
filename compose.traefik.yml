@@ -1,0 +1,66 @@
+# =========================================================================
+# lab-algebra detrás de un Traefik que YA existe en el servidor (p. ej. el VPS
+# con n8n, que ocupa 80/443 con Let's Encrypt). Se aplica ENCIMA de
+# docker-compose.yml:
+#
+#   docker compose -f docker-compose.yml -f compose.traefik.yml up -d --build --wait
+#
+# En el servidor, mejor fijarlo en el .env para que un `docker compose up` a
+# secas NUNCA levante el stack base (que publica 8080 y 8000 saltándose el
+# firewall):
+#   COMPOSE_PATH_SEPARATOR=:
+#   COMPOSE_FILE=docker-compose.yml:compose.traefik.yml
+#
+# Qué cambia respecto del stack local:
+#   - No publica NINGÚN puerto en el host: los puertos que publica Docker se
+#     saltan firewalld/ufw. Solo Traefik llega a la interfaz, por la red
+#     compartida; la API y Postgres siguen solo en `lab-algebra-net`.
+#   - Basic auth en Traefik, delante del login propio: el nombre del host queda
+#     público en Certificate Transparency y el login de la app es la única
+#     barrera frente a bots que prueban contraseñas.
+#   - mem_limit por servicio: el VPS es compartido. Medido en local con
+#     `docker stats` (30 diagramas de Venn seguidos): db 27, API 117→143, web
+#     87 MiB; el límite deja ~2× de margen.
+#   - ENTORNO=prod.
+#
+# Los container_name y la red NO se renombran: la interfaz resuelve la API
+# como `lab-algebra-api` y la API a Postgres como `lab-algebra-db`.
+#
+# Variables extra del .env (además de las de .env.example):
+#   LAB_ALGEBRA_HOST        nombre público, p. ej. algebra.<ip-con-guiones>.sslip.io
+#   TRAEFIK_NETWORK         red de Docker donde vive Traefik (`docker network ls`)
+#   LAB_ALGEBRA_BASIC_AUTH  usuario:hash ($apr1$ o bcrypt) ENTRE COMILLAS SIMPLES
+#                           en el .env, para que Compose no interprete los `$`
+#   TRAEFIK_CERTRESOLVER    resolver ACME de ese Traefik (por defecto `le`)
+#   TRAEFIK_ENTRYPOINT      entrypoint HTTPS de ese Traefik (por defecto `websecure`)
+# =========================================================================
+
+services:
+  db:
+    mem_limit: 128m
+
+  api:
+    ports: !reset []
+    mem_limit: 320m
+    environment:
+      ENTORNO: prod
+
+  web:
+    ports: !reset []
+    mem_limit: 256m
+    networks: [lab-algebra-net, traefik]
+    labels:
+      traefik.enable: "true"
+      # Con dos redes, Traefik debe saber por cuál llegar al contenedor.
+      traefik.docker.network: ${TRAEFIK_NETWORK:?define TRAEFIK_NETWORK en tu .env}
+      traefik.http.routers.lab-algebra.rule: Host(`${LAB_ALGEBRA_HOST:?define LAB_ALGEBRA_HOST en tu .env}`)
+      traefik.http.routers.lab-algebra.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.lab-algebra.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-le}
+      traefik.http.routers.lab-algebra.middlewares: lab-algebra-auth
+      traefik.http.middlewares.lab-algebra-auth.basicauth.users: ${LAB_ALGEBRA_BASIC_AUTH:?define LAB_ALGEBRA_BASIC_AUTH en tu .env}
+      traefik.http.services.lab-algebra.loadbalancer.server.port: "8080"
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK}

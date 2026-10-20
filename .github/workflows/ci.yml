@@ -44,6 +44,22 @@ jobs:
       - name: Frontend
         run: ruff check .
         working-directory: frontend
+      # El override del servidor no lo levanta ningún job (necesita un Traefik
+      # con su red), así que al menos se valida y se exige que no publique
+      # ningún puerto: un `ports` que se colara se saltaría el firewall.
+      - name: Override de producción detrás de Traefik (compose.traefik.yml)
+        env:
+          POSTGRES_PASSWORD: ci
+          SECRET_KEY: ci
+          STORAGE_SECRET: ci
+          LAB_ALGEBRA_HOST: algebra.ci.example
+          TRAEFIK_NETWORK: ci
+          LAB_ALGEBRA_BASIC_AUTH: ci:x
+        run: |
+          docker compose -f docker-compose.yml -f compose.traefik.yml config --quiet
+          publicados=$(docker compose -f docker-compose.yml -f compose.traefik.yml config | grep -c published || true)
+          echo "puertos publicados: $publicados"
+          [ "$publicados" -eq 0 ]
 
   test:
     name: Tests (SQLite)
