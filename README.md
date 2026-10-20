@@ -1,6 +1,14 @@
-# lab-algebra
+# lab-algebra — tarjetas de Álgebra que calculan, con aritmética exacta
 
 [![CI](https://github.com/NicolasAndresCL/lab-algebra/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasAndresCL/lab-algebra/actions/workflows/ci.yml)
+![Versión](https://img.shields.io/badge/versi%C3%B3n-1.4.0-blue)
+![Python](https://img.shields.io/badge/python-3.12-3776AB)
+
+| | |
+|---|---|
+| **Versión** | 1.4.0 |
+| **Fecha** | 20 de octubre de 2026 |
+| **Autor** | [Nicolás Andrés Cano Leal](#autor) |
 
 Laboratorio de tarjetas de memorización para la asignatura de **Álgebra**
 (Universidad Santo Tomás, 2026): unidades de **lógica proposicional**,
@@ -24,6 +32,7 @@ con **aritmética exacta** — donde la respuesta es 1/3 aparece 1/3, nunca 0,33
 - [Cómo se ve](#cómo-se-ve)
 - [Temas](#temas)
 - [Puesta en marcha](#puesta-en-marcha)
+- [Desplegar detrás de Traefik](#desplegar-detrás-de-traefik)
 - [Cómo se usa](#cómo-se-usa)
 - [Arquitectura](#arquitectura)
 - [El temario](#el-temario)
@@ -135,7 +144,7 @@ Requisitos: **Docker** y **Docker Compose v2**. Nada más — ni Python ni
 PostgreSQL en el equipo.
 
 ```bash
-git clone <url-del-repositorio>
+git clone https://github.com/NicolasAndresCL/lab-algebra.git
 cd lab-algebra
 
 cp .env.example .env
@@ -167,6 +176,89 @@ Para apagarlo:
 docker compose down       # conserva el progreso de estudio
 docker compose down -v    # borra también la base de datos
 ```
+
+## Desplegar detrás de Traefik
+
+Para un servidor que **ya tiene un Traefik** en los puertos 80/443 con
+Let's Encrypt (el VPS donde corre n8n). `compose.traefik.yml` se aplica
+**encima** de `docker-compose.yml` y cambia cuatro cosas:
+
+- **0 puertos publicados en el host.** Los puertos que publica Docker se saltan
+  firewalld/ufw; aquí solo Traefik llega a la interfaz, por una red compartida.
+- **Solo `web` se une a la red de Traefik.** La API y Postgres siguen únicamente
+  en `lab-algebra-net`.
+- **Basic auth de Traefik delante del login propio.** El nombre del host queda
+  público en Certificate Transparency, y el login de la app sería la única
+  barrera frente a bots que prueban contraseñas.
+- **`mem_limit` por servicio y `ENTORNO=prod`.**
+
+```bash
+git clone --branch v1.4.0 https://github.com/NicolasAndresCL/lab-algebra.git   # en el servidor se clona el tag
+cd lab-algebra
+
+# 1. Hash de la contraseña de Traefik (se pega como usuario:hash, formato apr1)
+openssl passwd -apr1 'una-contraseña-larga'
+
+# 2. .env: las tres claves de siempre, PASSWORD_INICIAL (ver abajo) y lo nuevo
+cp .env.example .env
+cat >> .env <<'FIN'
+LAB_ALGEBRA_HOST=algebra.<ip-con-guiones>.sslip.io
+TRAEFIK_NETWORK=<red-de-traefik>
+LAB_ALGEBRA_BASIC_AUTH='nico:$apr1$...$...'
+COMPOSE_PATH_SEPARATOR=:
+COMPOSE_FILE=docker-compose.yml:compose.traefik.yml
+FIN
+# TRAEFIK_NETWORK: mira el nombre con `docker network ls`.
+# El hash va entre comillas simples porque lleva `$`.
+
+# 3. Comprobar que no publica nada (debe imprimir 0)
+docker compose config | grep -c published
+
+# 4. Levantar
+docker compose up -d --build --wait
+```
+
+`COMPOSE_FILE` en el `.env` es deliberado: así un `docker compose up` a secas
+**nunca** levanta el stack base, que publica el 8080 y el 8000 saltándose el
+firewall.
+
+| Variable | Por defecto | Para qué |
+|---|---|---|
+| **`LAB_ALGEBRA_HOST`** | — obligatoria | Nombre público que enruta Traefik |
+| **`TRAEFIK_NETWORK`** | — obligatoria | Red de Docker donde vive ese Traefik |
+| **`LAB_ALGEBRA_BASIC_AUTH`** | — obligatoria | `usuario:hash` (`$apr1$` o bcrypt), **entre comillas simples** en el `.env` |
+| `TRAEFIK_CERTRESOLVER` | `le` | Resolver ACME de ese Traefik |
+| `TRAEFIK_ENTRYPOINT` | `websecure` | Entrypoint HTTPS de ese Traefik |
+| `COMPOSE_PATH_SEPARATOR` / `COMPOSE_FILE` | — | `:` y `docker-compose.yml:compose.traefik.yml` |
+
+Límites de memoria. Se midieron con `docker stats` y 30 diagramas de Venn
+seguidos; como el VPS es compartido, cada límite deja ~2× de margen sobre el
+pico. La última columna es el uso real tras arrancar en la prueba del 20 de
+octubre:
+
+| Servicio | Límite | Uso tras arrancar |
+|---|---|---|
+| `db` | 128 MiB | 58,3 MiB |
+| `api` | 320 MiB | 123,7 MiB |
+| `web` | 256 MiB | 88,8 MiB |
+
+Tres cosas para no romperlo:
+
+- **`PASSWORD_INICIAL` se define antes del primer `up`.** Solo actúa con el
+  volumen vacío; después, cambiarla en el `.env` no toca el usuario existente.
+- **No renombrar `container_name` ni la red `lab-algebra-net`:** la interfaz
+  resuelve la API como `lab-algebra-api` y la API a Postgres como
+  `lab-algebra-db`.
+- **`ORIGENES_PERMITIDOS` (CORS) no importa aquí.** El navegador nunca llama a
+  la API: la interfaz NiceGUI la consulta desde el servidor e incrusta los
+  diagramas como data URI en base64.
+
+Verificado en Docker Desktop con un Traefik v3.6 desechable: build y arranque
+en 72 s, `docker compose ps` sin `0.0.0.0:`, 401 sin credenciales y 200 con
+ellas (también en `/healthz` de la web), el login con la contraseña por defecto
+rechazado (401) y con la `PASSWORD_INICIAL` nueva aceptado (200), y la web en
+`lab-algebra-net` más la red de Traefik mientras la API queda solo en
+`lab-algebra-net`.
 
 ## Cómo se usa
 
@@ -535,7 +627,7 @@ exactamente cero saldría como 1e−17.
 
 | Job | Qué comprueba |
 |---|---|
-| `lint` | `ruff` sobre backend y frontend |
+| `lint` | `ruff` sobre backend y frontend, más `docker compose config --quiet` sobre `compose.traefik.yml` exigiendo **0 puertos publicados** |
 | `test` | pytest del backend con SQLite, cobertura mínima del 90 % |
 | `test-frontend` | contraste WCAG de las cuatro paletas |
 | `test-postgres` | la misma suite contra PostgreSQL 16 real |
@@ -571,7 +663,8 @@ Todo por variables de entorno; nada quemado en el código. Ver `.env.example`.
 | `USUARIO_INICIAL` | `nico` | Usuario que se crea en el primer arranque |
 | `PASSWORD_INICIAL` | `1234` | Su contraseña |
 | `ENTORNO` | `dev` | `dev` \| `test` \| `prod` |
-| `PUERTO_WEB` / `PUERTO_API` | `8080` / `8000` | Puertos publicados en el host |
+| `PUERTO_WEB` / `PUERTO_API` | `8080` / `8000` | Puertos publicados en el host (el override de Traefik los quita) |
+| `LAB_ALGEBRA_HOST`, `TRAEFIK_NETWORK`, `LAB_ALGEBRA_BASIC_AUTH`, `TRAEFIK_CERTRESOLVER`, `TRAEFIK_ENTRYPOINT` | — | Solo para [desplegar detrás de Traefik](#desplegar-detrás-de-traefik) |
 
 `SECRET_KEY` exige 32 caracteres porque es el mínimo que la RFC 7518 §3.2
 recomienda para HS256; por debajo, PyJWT avisa en cada firma.
@@ -662,3 +755,16 @@ proposicional, teoría de conjuntos, sistemas de ecuaciones lineales y matrices
 y determinantes. Los
 enunciados de los ejercicios provienen de las clases y evaluaciones de la
 asignatura y se citan con su lámina de origen.
+
+---
+
+## Autor
+
+**Nicolás Andrés Cano Leal**\
+Backend Engineer → SRE | Python · Django · Kubernetes · Terraform · CI/CD
+
+- LinkedIn: [linkedin.com/in/nicolasandrescl](https://www.linkedin.com/in/nicolasandrescl/)
+- Portafolio: [nicolasandrescl.github.io](https://nicolasandrescl.github.io/)
+- Correo: [nicolas.cano.leal@gmail.com](mailto:nicolas.cano.leal@gmail.com)
+
+lab-algebra v1.4.0 · 20 de octubre de 2026
